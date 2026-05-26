@@ -6,7 +6,14 @@
 			{
 				"name": "Get_EIA_ApiKey",
 				"type": "WebActivity",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Get_Databricks_PAT",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -236,6 +243,61 @@
 						}
 					}
 				]
+			},
+			{
+				"name": "Get_Databricks_PAT",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://kv-grantpud-poc.vault.azure.net/secrets/databricks-pat?api-version=7.4",
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "Trigger_Databricks_Job",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Copy_NOAA_to_Bronze",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/json",
+						"Authorization": {
+							"value": "@concat('Bearer ', activity('Get_Databricks_PAT').output.value)",
+							"type": "Expression"
+						}
+					},
+					"url": "https://adb-7405607300790677.17.azuredatabricks.net/api/2.1/jobs/run-now",
+					"body": {
+						"job_id": 1116563080006767
+					}
+				}
 			}
 		],
 		"parameters": {
