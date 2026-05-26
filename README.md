@@ -1,119 +1,189 @@
-# Grant PUD PoC
+# Grant PUD Proof of Concept
 
-Azure data engineering PoC ingesting public utility load and weather data into a medallion architecture for analytical consumption.
+An Azure data engineering portfolio piece demonstrating an end-to-end medallion architecture for ingesting and analyzing public utility load and weather data. Built around the Bonneville Power Administration (BPA) balancing authority and Pacific Northwest weather observations.
 
-## Why This Project Exists
+## What this project does
 
-This is a portfolio piece demonstrating end-to-end Azure data engineering patterns using publicly available energy and weather data. The project ingests Bonneville Power Administration (BPA) balancing authority load data from the EIA and correlates it with NOAA weather observations from Portland International Airport. It exercises ADF orchestration, Databricks PySpark transformations, Delta Lake storage, dimensional modeling (including SCD2), .NET-based pipeline monitoring, and CI/CD via GitHub Actions. The architecture mirrors patterns common in utility and energy sector data platforms, where load forecasting and weather correlation are standard analytical workloads.
+The pipeline ingests two public REST APIs into Azure Data Lake Storage Gen2, transforms the raw payloads into curated Delta tables using PySpark on Databricks, and produces a dimensional star schema suitable for analytical consumption. A daily Azure Data Factory trigger drives the bronze layer; a Databricks Workflows job handles silver and gold transformations downstream.
+
+Data sources are deliberately utility-relevant: EIA Open Data API for hourly electricity demand, generation, forecast, and interchange data, paired with NOAA Climate Data Online for daily weather observations from Portland International Airport, the standard reference station for the BPA service area.
 
 ## Architecture
 
-Data flows through a bronze/silver/gold medallion architecture. Raw JSON lands in the bronze layer via ADF pipelines, PySpark notebooks in Databricks clean and conform it into silver Delta tables, and a final notebook builds a star schema in the gold layer for analytical consumption.
+The pipeline implements medallion architecture on Delta Lake, a cloud-based data lake pattern that progresses raw external data through curated and analytical layers with increasing levels of trust and schema enforcement at each step.
 
 ```mermaid
 flowchart LR
-    EIA["EIA API v2"] --> ADF["ADF Pipelines"]
-    NOAA["NOAA CDO API"] --> ADF
-    ADF --> Bronze["Bronze\n(Raw JSON, ADLS Gen2)"]
-    Bronze --> NB1["Databricks\nPySpark Notebooks"]
-    NB1 --> Silver["Silver\n(Delta Tables)"]
-    Silver --> NB2["Databricks\nPySpark Notebook"]
-    NB2 --> Gold["Gold\n(Star Schema)"]
-    Gold --> PBI["Power BI"]
-    Gold --> DBSQL["Databricks SQL"]
-
-    subgraph "Gold Star Schema"
-        direction TB
-        F["fact_hourly_load"]
-        D1["dim_date"]
-        D2["dim_balancing_authority (SCD2)"]
-        D3["dim_weather_station"]
+    subgraph Sources["External Sources"]
+        EIA[EIA Open Data APIBPA hourly electricity]
+        NOAA[NOAA Climate Data APIKPDX daily weather]
     end
 
-    ADF -->|Event Grid| Monitor[".NET Monitoring Service"]
-    Monitor --> ASQL["Azure SQL"]
-    ASQL --> Dash["Dashboard"]
+    subgraph Ingestion["Azure Data Factory"]
+        ADF[pl_bronze_ingest_dailyDaily 6am UTC trigger]
+        KV[(Key VaultAPI keys)]
+    end
+
+    subgraph Lake["ADLS Gen2 + Unity Catalog"]
+        Bronze[(BronzeRaw JSON partitionedby date)]
+        Silver[(Silverelectricity_hourlyweather_daily)]
+        Gold[(Gold star schemafact + 3 dimensions)]
+    end
+
+    subgraph Compute["Databricks Workflows"]
+        Job[grantpud-medallion-pipelineServerless compute]
+    end
+
+    subgraph Consumers["Analytical Consumers"]
+        BI[BI tools / SQLPower BI, Databricks SQL]
+    end
+
+    EIA -->|REST| ADF
+    NOAA -->|REST| ADF
+    KV -.auth.-> ADF
+    ADF -->|JSON| Bronze
+    ADF -->|run-now API| Job
+    Bronze --> Job
+    Job -->|PySpark| Silver
+    Silver --> Job
+    Job -->|PySpark| Gold
+    Gold --> BI
 ```
 
-## Tech Stack
+Bronze is faithful to the source. Silver enforces schema and applies type conversion, deduplication, and validation. Gold contains a star schema with one fact table and three dimensions, including a Type 2 slowly-changing dimension on the balancing authority entity.
 
-- Azure Data Factory
-- Azure Databricks (Premium tier)
-- Delta Lake
-- Azure Data Lake Storage Gen2
-- Unity Catalog
-- Microsoft Purview
-- .NET 8
-- Azure SQL Database
-- Azure Event Grid
-- GitHub Actions
+## Tech stack
 
-## Data Sources
+- Azure Data Factory (ingestion orchestration, Git-integrated)
+- Azure Databricks Premium (PySpark transformations, Unity Catalog)
+- Delta Lake (storage format for all silver and gold tables)
+- Azure Data Lake Storage Gen2 (bronze/silver/gold containers)
+- Microsoft Purview (catalog and lineage)
+- Azure Key Vault (API key storage)
+- Azure Managed Identity and RBAC (zero stored credentials in pipelines)
+- .NET 8 (monitoring service consuming Event Grid pipeline events)
+- Azure SQL Database (pipeline run metadata)
+- GitHub Actions (CI/CD for ADF, notebooks, and the .NET service)
 
-### EIA Open Data API v2
-
-The [EIA Open Data API](https://www.eia.gov/opendata/) provides hourly demand, generation, and interchange data for the BPAT (Bonneville Power Administration) balancing authority. This data forms the core fact table in the gold layer.
-
-### NOAA Climate Data Online API
-
-The [NOAA CDO API](https://www.ncdc.noaa.gov/cdo-web/) provides hourly weather observations from station GHCND:USW00024229 (Portland International Airport). PDX is the standard reference station for the BPA service area and is used here for weather correlation against load data.
-
-Both APIs require free registration for API keys. In this implementation, keys are stored in Azure Key Vault and referenced by ADF linked services.
-
-## Repository Structure
-
+## Repository structure
 ```
 grant-pud-poc/
-├── docs/           Documentation: architecture, runbook, data dictionary
-├── adf/            Azure Data Factory resource definitions (JSON exports)
-├── notebooks/      Databricks notebooks (.py source format)
-├── src/            .NET 8 monitoring service (Worker + API + Tests)
-├── infra/          Infrastructure-as-code (Bicep/ARM templates)
-└── .github/        GitHub Actions CI/CD workflows
+├── adf/                   ADF resources as JSON, auto-committed via Git integration
+│   ├── linkedServices/
+│   ├── datasets/
+│   ├── pipelines/
+│   └── triggers/
+├── notebooks/             Databricks notebooks in source format
+│   ├── bronze_to_silver_eia.py
+│   ├── bronze_to_silver_noaa.py
+│   └── silver_to_gold.py
+├── src/                   .NET 8 monitoring service
+│   ├── PipelineMonitor.Worker/    Event Grid consumer
+│   ├── PipelineMonitor.Api/       Dashboard API
+│   └── PipelineMonitor.Tests/
+├── infra/                 IaC templates (Bicep)
+├── docs/                  Architecture, runbook, data dictionary
+└── .github/workflows/     CI/CD pipelines
 ```
 
-## Setup Prerequisites
+## Data sources
 
-To reproduce this project you will need:
+| Source | Endpoint | Auth | Cadence |
+|--------|----------|------|---------|
+| EIA Open Data API v2 | `/v2/electricity/rto/region-data/data/` | API key (query param) | Hourly |
+| NOAA Climate Data Online v2 | `/cdo-web/api/v2/data` | Token (HTTP header) | Daily |
 
-- Azure subscription with permissions to create resource groups
-- Azure CLI (2.50+)
-- Databricks CLI (0.200+)
-- .NET 8 SDK
-- GitHub account
-- EIA API key (free registration at https://www.eia.gov/opendata/)
-- NOAA CDO token (free registration at https://www.ncdc.noaa.gov/cdo-web/token)
+Both APIs are free and require registration. Keys are stored in Azure Key Vault and fetched by ADF at runtime via the system-assigned managed identity.
 
-Detailed setup instructions are in `docs/`.
+## Pipelines
 
-## Pipeline Overview
+**`pl_bronze_ingest_daily`**: Production pipeline. Pulls one day of EIA and NOAA data, lands JSON in `bronze/` partitioned by date, then invokes the Databricks medallion job via the Jobs API. Runs daily at 06:00 UTC via a Schedule trigger; `runDate` defaults to the trigger's scheduled date minus one (sources publish with a one-day lag).
 
-### pl_bronze_ingest_daily
+**`pl_bronze_backfill`**: One-time historical loader. Generates a date array from `startDate` and `daysToGet`, then iterates `pl_bronze_ingest_daily` over each date sequentially. Used to populate historical data without waiting for the daily trigger.
 
-Runs daily on a scheduled trigger. Pulls the previous day's hourly data from both the EIA and NOAA APIs, writes raw JSON responses to the bronze layer in ADLS Gen2, partitioned by `source/yyyy/MM/dd/`. Emits Event Grid events on success and failure for the monitoring service.
+**Databricks Job `grantpud-medallion-pipeline`**: Three-task DAG: `bronze_to_silver_eia` and `bronze_to_silver_noaa` run in parallel, then `silver_to_gold` runs after both complete. Triggered by ADF; runs on serverless compute.
 
-### pl_bronze_backfill
+## Star schema
 
-A parameterized pipeline accepting a date range. Used for initial historical data loading during development and for reprocessing scenarios. Designed to be triggered manually via the ADF UI or `workflow_dispatch` in CI.
+The gold layer follows Kimball dimensional modeling.
+
+**Fact**
+
+| Table | Grain | Measures |
+|-------|-------|----------|
+| `fact_daily_load_weather` | One row per (date, balancing_authority) | Demand (total/peak/avg MWh), generation, interchange, forecast, temperature (max/min/range), precipitation, wind |
+
+**Dimensions**
+
+| Table | Type | Notes |
+|-------|------|-------|
+| `dim_date` | Type 1 | Calendar dimension, computed deterministically from fact date range |
+| `dim_balancing_authority` | Type 2 (SCD2) | Tracks attribute history; `effective_from`, `effective_to`, `is_current` |
+| `dim_weather_station` | Type 1 | Station metadata seeded from a reference table |
+
+The SCD2 implementation uses Delta `MERGE INTO` semantics with `whenMatchedUpdate` to close current rows and `whenNotMatchedInsert` to add new versions, ensuring idempotent reruns.
+
+## Data quality
+
+Each silver notebook executes explicit data validation rules and schema checks before writing, formalizing the data quality expectations for the layer:
+
+- Schema enforcement against an explicit StructType definition
+- Null checks on primary key columns
+- Duplicate detection on natural keys
+- Domain checks where applicable (expected enum values, unit consistency)
+- Row count assertions
+
+Failures raise exceptions that propagate through Databricks Workflows and surface as job-level failures, where retry and alerting policies live.
+
+## Monitoring
+
+The pipeline supports both scheduled and event-driven monitoring patterns. Scheduled runs surface in ADF's Monitor view and the Databricks Workflows UI, each providing run history, duration metrics, and failure diagnostics. Event-driven monitoring is implemented via Azure Event Grid: ADF pipeline events flow to a .NET 8 consumer service that persists run metadata to Azure SQL and surfaces a real-time pipeline health dashboard.
+
+Failure escalation and incident documentation are described in `docs/runbook.md`.
+
+## Security model
+
+All Azure-to-Azure authentication uses managed identities and RBAC. No connection strings, account keys, or service principal secrets appear in pipeline or notebook code. The credential layer:
+
+- ADF authenticates to ADLS Gen2 via its system-assigned managed identity (Storage Blob Data Contributor)
+- ADF authenticates to Key Vault via its system-assigned managed identity (Key Vault Secrets User)
+- Databricks authenticates to ADLS Gen2 via a dedicated Access Connector with its own managed identity, surfaced through Unity Catalog as an external location and storage credential
+- The .NET monitoring service authenticates to Azure SQL via its App Service managed identity using Entra ID authentication
+
+The EIA API echoes the caller's API key in every response payload as a documented part of its response contract. The key is a free, read-only credential against public data with no associated authorization beyond rate limiting. The bronze layer retains the response faithfully, including this echo, as is appropriate for a raw layer. The silver bronze-to-silver transformation explicitly drops the `request` object, ensuring the credential does not propagate to consumer-facing layers. For credentials with material risk such as PHI feeds or write-capable tokens, the appropriate pattern would be a network-boundary scrub before bronze; the architecture supports adding that layer cleanly.
+
+## Catalog and lineage
+
+Unity Catalog provides the catalog backbone, with the `grantpud` catalog containing `silver` and `gold` schemas. Tables, columns, and partition definitions are discoverable through the catalog UI and queryable via standard SQL. End-to-end lineage from external sources through bronze, silver, and gold is captured by Microsoft Purview, which scans both the storage account and the Databricks workspace.
+
+## CI/CD
+
+ADF resources are version-controlled via the native Azure Data Factory Git integration, with `main` as the collaboration branch and `adf_publish` as the auto-generated deployment branch. Notebooks are stored as source-format `.py` files in `notebooks/`, synced from Databricks Repos. GitHub Actions workflows handle deployment for each component: branching follows GitHub Flow, PRs trigger validation, and `dotnet test` runs the xUnit suite for the .NET monitoring service on every push.
 
 ## Status
 
-This is an active proof-of-concept.
+Complete:
 
-**Complete:**
+- Azure infrastructure provisioned (storage, ADF, Databricks, Key Vault, SQL, App Service, Access Connector)
+- Unity Catalog with external locations and three-tier schema (`grantpud.silver`, `grantpud.gold`)
+- ADF bronze ingestion pipeline with daily trigger and managed identity authentication
+- Historical backfill pipeline with parameterized date range
+- Silver layer for both NOAA and EIA with schema enforcement and data quality checks
+- Gold star schema with SCD2 dimension and idempotent MERGE writes
+- End-to-end ADF-to-Databricks orchestration
 
-- Azure infrastructure provisioning
-- Bronze ingestion pipelines
-- Historical backfill
+In progress:
 
-**In progress:**
+- .NET 8 monitoring service consuming ADF Event Grid events
+- CI/CD workflows (currently scaffolded as stubs)
+- Microsoft Purview scan and lineage diagram
+- Documented runbook for failure modes
+- Flat-file ingestion path (reference data via CSV)
 
-- Silver transformations
-- Gold star schema
-- .NET monitoring service
-- CI/CD workflows
-- Purview lineage integration
+## Local setup
+
+Reproducing this project requires an Azure subscription and the Azure CLI, .NET 8 SDK, and Databricks CLI. Full setup details are in `docs/architecture.md`.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+MIT. See `LICENSE`.
