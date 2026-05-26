@@ -1,0 +1,35 @@
+{
+	"name": "ds_rest_eia_regiondata",
+	"properties": {
+		"description": "Default value of respondent is set to BPAT (Bonneville Power Administration)",
+		"linkedServiceName": {
+			"referenceName": "ls_rest_eia",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"apiKey": {
+				"type": "string"
+			},
+			"startDate": {
+				"type": "string"
+			},
+			"endDate": {
+				"type": "string"
+			},
+			"respondent": {
+				"type": "string",
+				"defaultValue": "BPAT"
+			}
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": {
+				"value": "@concat('electricity/rto/region-data/data/?frequency=hourly&data[]=value&facets[respondent][]=', dataset().respondent, '&start=', dataset().startDate, '&end=', dataset().endDate, '&api_key=', dataset().apiKey)",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

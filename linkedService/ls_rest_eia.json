@@ -1,0 +1,14 @@
+{
+	"name": "ls_rest_eia",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "EIA Open Data API for electricity grid data",
+		"annotations": [],
+		"type": "RestService",
+		"typeProperties": {
+			"url": "https://api.eia.gov/v2/",
+			"enableServerCertificateValidation": true,
+			"authenticationType": "Anonymous"
+		}
+	}
+}
