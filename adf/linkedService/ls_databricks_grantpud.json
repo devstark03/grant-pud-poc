@@ -1,0 +1,7 @@
+{
+	"name": "ls_databricks_grantpud",
+	"properties": {
+		"annotations": [],
+		"type": "Databricks"
+	}
+}
