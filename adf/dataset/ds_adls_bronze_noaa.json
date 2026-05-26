@@ -1,0 +1,42 @@
+{
+	"name": "ds_adls_bronze_noaa",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adls_grantpud",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"stationId": {
+				"type": "string",
+				"defaultValue": "GHCND:USW00024229"
+			},
+			"year": {
+				"type": "string"
+			},
+			"month": {
+				"type": "string"
+			},
+			"day": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@concat('noaa_', replace(dataset().stationId, ':', '_'), '_', dataset().year, '-', dataset().month, '-', dataset().day, '.json')",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@concat('noaa/', replace(dataset().stationId, ':', '_'), '/year=', dataset().year, '/month=', dataset().month, '/day=', dataset().day)",
+					"type": "Expression"
+				},
+				"fileSystem": "bronze"
+			}
+		},
+		"schema": {}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

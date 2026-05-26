@@ -1,0 +1,14 @@
+{
+	"name": "ls_rest_noaa",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "NOAA Climate Data Online API for weather observations",
+		"annotations": [],
+		"type": "RestService",
+		"typeProperties": {
+			"url": "https://www.ncei.noaa.gov/cdo-web/api/v2/",
+			"enableServerCertificateValidation": true,
+			"authenticationType": "Anonymous"
+		}
+	}
+}

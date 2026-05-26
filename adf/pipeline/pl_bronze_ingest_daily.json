@@ -1,0 +1,259 @@
+{
+	"name": "pl_bronze_ingest_daily",
+	"properties": {
+		"description": "Daily ingestion of EIA and NOAA data into bronze layer.",
+		"activities": [
+			{
+				"name": "Get_EIA_ApiKey",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://kv-grantpud-poc.vault.azure.net/secrets/eia-api-key?api-version=7.4",
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "Get_NOAA_Token",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Get_EIA_ApiKey",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://kv-grantpud-poc.vault.azure.net/secrets/noaa-token?api-version=7.4",
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "Copy_EIA_to_Bronze",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Get_NOAA_Token",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings",
+							"filePattern": "setOfObjects"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_rest_eia_regiondata",
+						"type": "DatasetReference",
+						"parameters": {
+							"apiKey": {
+								"value": "@activity('Get_EIA_ApiKey').output.value",
+								"type": "Expression"
+							},
+							"startDate": {
+								"value": "@concat(pipeline().parameters.runDate, 'T00')",
+								"type": "Expression"
+							},
+							"endDate": {
+								"value": "@concat(pipeline().parameters.runDate, 'T23')",
+								"type": "Expression"
+							},
+							"respondent": {
+								"value": "@pipeline().parameters.respondent",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_adls_bronze_eia",
+						"type": "DatasetReference",
+						"parameters": {
+							"respondent": {
+								"value": "@pipeline().parameters.respondent",
+								"type": "Expression"
+							},
+							"year": {
+								"value": "@substring(pipeline().parameters.runDate, 0, 4)",
+								"type": "Expression"
+							},
+							"month": {
+								"value": "@substring(pipeline().parameters.runDate, 5, 2)",
+								"type": "Expression"
+							},
+							"day": {
+								"value": "@substring(pipeline().parameters.runDate, 8, 2)",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "Copy_NOAA_to_Bronze",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Copy_EIA_to_Bronze",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"additionalHeaders": {
+							"token": {
+								"value": "@activity('Get_NOAA_Token').output.value",
+								"type": "Expression"
+							}
+						},
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_rest_noaa_observations",
+						"type": "DatasetReference",
+						"parameters": {
+							"token": {
+								"value": "@activity('Get_NOAA_Token').output.value",
+								"type": "Expression"
+							},
+							"stationId": {
+								"value": "@pipeline().parameters.stationId",
+								"type": "Expression"
+							},
+							"startDate": {
+								"value": "@pipeline().parameters.runDate",
+								"type": "Expression"
+							},
+							"endDate": {
+								"value": "@pipeline().parameters.runDate",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_adls_bronze_noaa",
+						"type": "DatasetReference",
+						"parameters": {
+							"stationId": {
+								"value": "@pipeline().parameters.stationId",
+								"type": "Expression"
+							},
+							"year": {
+								"value": "@substring(pipeline().parameters.runDate, 0, 4)",
+								"type": "Expression"
+							},
+							"month": {
+								"value": "@substring(pipeline().parameters.runDate, 5, 2)",
+								"type": "Expression"
+							},
+							"day": {
+								"value": "@substring(pipeline().parameters.runDate, 8, 2)",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"runDate": {
+				"type": "string",
+				"defaultValue": "2000-01-01"
+			},
+			"respondent": {
+				"type": "string",
+				"defaultValue": "BPAT"
+			},
+			"stationId": {
+				"type": "string",
+				"defaultValue": "GHCND:USW00024229"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-05-26T15:14:11Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

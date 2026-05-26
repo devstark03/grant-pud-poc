@@ -1,0 +1,35 @@
+{
+	"name": "ds_rest_noaa_observations",
+	"properties": {
+		"description": "Station ID is set to Portland International Airport, which is the standard weather station for the BPA service area.",
+		"linkedServiceName": {
+			"referenceName": "ls_rest_noaa",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"token": {
+				"type": "string"
+			},
+			"stationId": {
+				"type": "string",
+				"defaultValue": "GHCND:USW00024229"
+			},
+			"startDate": {
+				"type": "string"
+			},
+			"endDate": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": {
+				"value": "@concat('data?datasetid=GHCND&stationid=', dataset().stationId, '&startdate=', dataset().startDate, '&enddate=', dataset().endDate, '&limit=1000&units=metric')",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
