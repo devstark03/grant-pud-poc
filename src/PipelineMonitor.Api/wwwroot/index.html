@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Monitor</title>
+    <style>
+        body {
+            font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        h1 {
+            margin: 0 0 1.5rem 0;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .card-label {
+            font-size: 0.85rem;
+            color: #6e6e73;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .card-value {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-top: 0.25rem;
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            border-collapse: collapse;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            background: #fafafa;
+            font-size: 0.85rem;
+            color: #6e6e73;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid #ececec;
+            font-size: 0.95rem;
+        }
+
+        .status-succeeded {
+            color: #2da44e;
+            font-weight: 500;
+        }
+
+        .status-failed {
+            color: #cf222e;
+            font-weight: 500;
+        }
+
+        .status-queued, .status-inprogress {
+            color: #9a6700;
+            font-weight: 500;
+        }
+
+        .alerts {
+            background: #fff8f5;
+            border-left: 4px solid #cf222e;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+
+            .alerts h2 {
+                margin: 0 0 0.5rem 0;
+                font-size: 1rem;
+                color: #cf222e;
+            }
+
+        .alert-item {
+            padding: 0.5rem 0;
+            border-top: 1px solid #ffe4dc;
+        }
+
+            .alert-item:first-child {
+                border-top: none;
+            }
+
+        .empty {
+            color: #6e6e73;
+            font-style: italic;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .refreshed {
+            color: #6e6e73;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pipeline Monitor</h1>
+
+    <div id="alerts-container"></div>
+
+    <div class="summary" id="summary"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Pipeline</th>
+                <th>Status</th>
+                <th>Started</th>
+                <th>Duration</th>
+                <th>Error</th>
+            </tr>
+        </thead>
+        <tbody id="runs"></tbody>
+    </table>
+
+    <div class="refreshed" id="refreshed"></div>
+
+    <script>
+  const formatDateTime = (iso) => iso ? new Date(iso).toLocaleString() : '';
+  const formatDuration = (sec) => sec == null ? '' : sec >= 60 ? `${(sec/60).toFixed(1)}m` : `${sec}s`;
+  const statusClass = (s) => `status-${(s || '').toLowerCase().replace(/\s+/g, '')}`;
+
+  async function refresh() {
+    try {
+      const [summary, runs, alerts] = await Promise.all([
+        fetch('/api/runs/summary?hours=24').then(r => r.json()),
+        fetch('/api/runs?hours=24&limit=50').then(r => r.json()),
+        fetch('/api/alerts/active').then(r => r.json()),
+      ]);
+
+      const summaryDiv = document.getElementById('summary');
+      summaryDiv.innerHTML = `
+        <div class="card"><div class="card-label">Total runs (24h)</div><div class="card-value">${summary.totalRuns}</div></div>
+        <div class="card"><div class="card-label">Succeeded</div><div class="card-value">${summary.succeededRuns}</div></div>
+        <div class="card"><div class="card-label">Failed</div><div class="card-value">${summary.failedRuns}</div></div>
+        <div class="card"><div class="card-label">Success rate</div><div class="card-value">${summary.successRate ?? '-'}${summary.successRate != null ? '%' : ''}</div></div>
+        <div class="card"><div class="card-label">Avg duration</div><div class="card-value">${formatDuration(summary.averageDurationSeconds)}</div></div>
+      `;
+
+      const alertsContainer = document.getElementById('alerts-container');
+      if (alerts.length === 0) {
+        alertsContainer.innerHTML = '';
+      } else {
+        alertsContainer.innerHTML = `
+          <div class="alerts">
+            <h2>${alerts.length} active alert${alerts.length === 1 ? '' : 's'}</h2>
+            ${alerts.map(a => `<div class="alert-item"><strong>${a.severity}</strong> · ${a.pipelineName}: ${a.message}</div>`).join('')}
+          </div>
+        `;
+      }
+
+      const runsBody = document.getElementById('runs');
+      if (runs.length === 0) {
+        runsBody.innerHTML = '<tr><td colspan="5" class="empty">No runs in the last 24 hours.</td></tr>';
+      } else {
+        runsBody.innerHTML = runs.map(r => `
+          <tr>
+            <td>${r.pipelineName}</td>
+            <td class="${statusClass(r.status)}">${r.status}</td>
+            <td>${formatDateTime(r.startTime)}</td>
+            <td>${formatDuration(r.durationSeconds)}</td>
+            <td>${r.errorMessage ? r.errorMessage.substring(0, 80) + (r.errorMessage.length > 80 ? '...' : '') : ''}</td>
+          </tr>
+        `).join('');
+      }
+
+      document.getElementById('refreshed').textContent = `Last refreshed: ${new Date().toLocaleTimeString()}`;
+    } catch (err) {
+      console.error('Refresh failed', err);
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 30000);
+    </script>
+</body>
+</html>
