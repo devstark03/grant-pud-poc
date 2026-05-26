@@ -1,0 +1,21 @@
+# Deploy Databricks Notebooks
+#
+# This workflow will eventually deploy notebooks to the Databricks
+# workspace using the Databricks CLI. It will:
+# 1. Authenticate to the Databricks workspace
+# 2. Sync notebook .py files to the target workspace path
+# 3. Verify deployment by listing the uploaded notebooks
+
+name: Deploy Notebooks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Notebooks
+        run: echo "TODO: deploy Databricks notebooks via databricks CLI"

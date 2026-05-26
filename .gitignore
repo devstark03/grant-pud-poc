@@ -1,0 +1,44 @@
+# .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+*.DotSettings.user
+project.lock.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Databricks
+.databricks/
+
+# Node
+node_modules/
+
+# IDE
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.local
+local.settings.json
+*.pem
+*.pfx
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
