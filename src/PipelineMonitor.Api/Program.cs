@@ -58,7 +58,6 @@ public static class Program {
         app.UseCors();
 
         app.MapNotifyEndpoints();
-        app.MapEventGridEndpoints();
         app.MapDashboardEndpoints();
 
         app.Run();
