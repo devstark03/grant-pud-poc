@@ -78,7 +78,6 @@ grant-pud-poc/
 │   ├── bronze_to_silver_noaa.py
 │   └── silver_to_gold.py
 ├── src/                   .NET 8 monitoring service
-│   ├── PipelineMonitor.Worker/    Event Grid consumer
 │   ├── PipelineMonitor.Api/       Dashboard API
 │   └── PipelineMonitor.Tests/
 ├── infra/                 IaC templates (Bicep)
