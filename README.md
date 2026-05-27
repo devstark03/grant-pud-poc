@@ -154,7 +154,11 @@ The EIA API echoes the caller's API key in every response payload as a documente
 
 ## Catalog and lineage
 
-Unity Catalog provides the catalog backbone, with the `grantpud` catalog containing `silver` and `gold` schemas. Tables, columns, and partition definitions are discoverable through the catalog UI and queryable via standard SQL. End-to-end lineage from external sources through bronze, silver, and gold is captured by Microsoft Purview, which scans both the storage account and the Databricks workspace.
+Unity Catalog provides the active catalog backbone for the data lake. Tables in `grantpud.silver`, `grantpud.gold`, and `grantpud.observability` are discoverable through the Catalog UI and queryable via standard SQL.
+
+Microsoft Purview is configured to scan the ADLS Gen2 storage account and the Databricks workspace, with lineage relationships across the medallion architecture captured as Atlas Process entities linking sources, transformations, and consumers. The diagram below shows the complete pipeline from raw bronze JSON through silver Delta tables into the gold star schema.
+
+![Medallion lineage in Microsoft Purview](docs/images/purview-lineage-medallion.png)
 
 ## CI/CD
 
