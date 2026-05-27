@@ -158,7 +158,13 @@ Unity Catalog provides the catalog backbone, with the `grantpud` catalog contain
 
 ## CI/CD
 
-ADF resources are version-controlled via the native Azure Data Factory Git integration, with `main` as the collaboration branch and `adf_publish` as the auto-generated deployment branch. Notebooks are stored as source-format `.py` files in `notebooks/`, synced from Databricks Repos. GitHub Actions workflows handle deployment for each component: branching follows GitHub Flow, PRs trigger validation, and `dotnet test` runs the xUnit suite for the .NET monitoring service on every push.
+Each system uses the deployment pattern most appropriate to its runtime:
+
+- **.NET monitoring service**: GitHub Actions builds, tests, and deploys via OIDC federation to App Service on every push to `main`. Workflow lives in `.github/workflows/main_app-grantpud-poc-monitor.yml`.
+- **Azure Data Factory**: Native Git integration commits all resources to `main` under `/adf`. The Publish action in ADF Studio promotes the JSON to the `adf_publish` branch, which serves as the deployment artifact. Multi-environment promotion would use this branch as input to an ARM deployment workflow.
+- **Databricks notebooks**: Databricks Repos integration syncs notebook source to GitHub, with the workspace reading directly from the Repos folder. Multi-environment promotion would use the Databricks CLI to sync between workspaces.
+
+The current setup supports a single-environment PoC. The architecture is ready to extend to multi-environment promotion when needed.
 
 ## Status
 

@@ -3,201 +3,1116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pipeline Monitor</title>
+    <title>Grant PUD Pipeline Monitor</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
-        body {
-            font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+        :root {
+            --dodger-blue: #2d94f9;
+            --bright-snow: #f9fafb;
+            --canvas: #f6f7fa;
+            --prussian-blue: #102542;
+            --jungle-green: #57a773;
+            --turf-green: #157145;
+            --amber: #f2a900;
+            --amber-text: #8a5a00;
+            --bronze: #a47148;
+            --gold: #c89b3c;
+            --row-bronze-tint: rgba(164, 113, 72, 0.04);
+            --row-silver-tint: rgba(45, 148, 249, 0.04);
+            --row-gold-tint: rgba(200, 155, 60, 0.06);
+            --row-bronze-tint-hover: rgba(164, 113, 72, 0.08);
+            --row-silver-tint-hover: rgba(45, 148, 249, 0.08);
+            --row-gold-tint-hover: rgba(200, 155, 60, 0.1);
+            --danger-red: #cf222e;
+            --ink: #0d1f3a;
+            --ink-secondary: #4a5a73;
+            --ink-tertiary: #7a8aa3;
+            --border: rgba(13, 31, 58, 0.08);
+            --border-on-dark: rgba(249, 250, 251, 0.08);
+            --on-dark: rgba(249, 250, 251, 0.92);
+            --on-dark-muted: rgba(249, 250, 251, 0.55);
+            --on-dark-faint: rgba(249, 250, 251, 0.32);
+            --shadow-sm: 0 1px 2px rgba(13, 31, 58, 0.04);
+            --shadow-card: 0 1px 2px rgba(13, 31, 58, 0.04), 0 4px 12px rgba(13, 31, 58, 0.04);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-pill: 999px;
+            --sidebar-width: 244px;
+            --row-height: 44px;
+            --table-max-rows: 8;
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
             margin: 0;
-            padding: 2rem;
-            background: #f5f5f7;
-            color: #1d1d1f;
+            overflow: hidden;
         }
 
-        h1 {
-            margin: 0 0 1.5rem 0;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--canvas);
+            color: var(--ink);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+        .app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
         }
 
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.25rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        /* Sidebar */
+        aside {
+            width: var(--sidebar-width);
+            flex-shrink: 0;
+            background: var(--prussian-blue);
+            color: var(--on-dark);
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset -1px 0 0 var(--border-on-dark);
         }
 
-        .card-label {
-            font-size: 0.85rem;
-            color: #6e6e73;
+        .sidebar-header {
+            padding: 1.75rem 1.5rem 1.5rem 1.5rem;
+            border-bottom: 1px solid var(--border-on-dark);
+        }
+
+        .brand-eyebrow {
+            font-size: 0.66rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.15em;
+            color: var(--on-dark-faint);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
         }
 
-        .card-value {
-            font-size: 1.75rem;
+        .brand-name {
+            font-size: 1.1rem;
             font-weight: 600;
-            margin-top: 0.25rem;
+            letter-spacing: -0.015em;
+            line-height: 1.3;
+        }
+
+        .brand-accent {
+            color: var(--dodger-blue);
+        }
+
+        /* Nav with sliding indicator */
+        .sidebar-nav {
+            flex: 1;
+            padding: 1.25rem 0;
+            position: relative;
+        }
+
+        .nav-indicator {
+            position: absolute;
+            left: 0;
+            width: 3px;
+            background: var(--dodger-blue);
+            border-radius: 0 2px 2px 0;
+            transition: top 0.32s var(--ease-out), height 0.32s var(--ease-out);
+            pointer-events: none;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: var(--on-dark-muted);
+            border: none;
+            width: 100%;
+            padding: 0.9rem 1.5rem;
+            font-size: 0.92rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            transition: color 0.2s var(--ease-out);
+            display: flex;
+            align-items: center;
+            gap: 0.95rem;
+            font-family: inherit;
+        }
+
+            .nav-btn:hover {
+                color: var(--on-dark);
+            }
+
+            .nav-btn.active {
+                color: var(--bright-snow);
+            }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            opacity: 0.7;
+            transition: opacity 0.2s var(--ease-out), color 0.2s var(--ease-out);
+        }
+
+        .nav-btn:hover .nav-icon {
+            opacity: 0.95;
+        }
+
+        .nav-btn.active .nav-icon {
+            opacity: 1;
+            color: var(--dodger-blue);
+        }
+
+        .nav-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.25;
+        }
+
+        .nav-label {
+            font-weight: 600;
+            letter-spacing: -0.005em;
+            font-size: 0.93rem;
+        }
+
+        .nav-sublabel {
+            font-size: 0.74rem;
+            color: var(--on-dark-faint);
+            font-weight: 400;
+            margin-top: 0.15rem;
+            transition: color 0.2s var(--ease-out);
+        }
+
+        .nav-btn.active .nav-sublabel {
+            color: var(--on-dark-muted);
+        }
+
+        /* Sidebar footer */
+        .sidebar-footer {
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--border-on-dark);
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            color: var(--on-dark-faint);
+        }
+
+            .live-indicator strong {
+                color: var(--jungle-green);
+                font-weight: 600;
+                letter-spacing: 0.01em;
+            }
+
+            .live-indicator .timestamp {
+                font-variant-numeric: tabular-nums;
+                font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+                font-size: 0.72rem;
+            }
+
+        .sidebar-footer a {
+            color: var(--on-dark-muted);
+            text-decoration: none;
+            font-size: 0.78rem;
+            transition: color 0.2s var(--ease-out);
+        }
+
+            .sidebar-footer a:hover {
+                color: var(--dodger-blue);
+            }
+
+        /* Main */
+        main {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--canvas);
+        }
+
+        .main-header {
+            padding: 1.5rem 2.25rem 1.4rem 2.25rem;
+            background: var(--bright-snow);
+            border-bottom: none;
+            box-shadow: 0 1px 0 var(--border), 0 4px 12px rgba(13, 31, 58, 0.04);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .main-eyebrow {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.13em;
+            color: var(--ink-tertiary);
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+
+        .main-title {
+            font-size: 1.55rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            color: var(--ink);
+            line-height: 1.15;
+        }
+
+        .main-subtitle {
+            font-size: 0.92rem;
+            color: var(--ink-secondary);
+            margin-top: 0.4rem;
+            max-width: 62ch;
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.75rem 2.25rem 2.5rem 2.25rem;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.24s var(--ease-out);
+        }
+
+            .tab-panel.active {
+                display: block;
+            }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Section titles */
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--ink-tertiary);
+            margin: 0 0 0.9rem 0;
+            font-weight: 700;
+        }
+
+            .section-title:not(:first-child) {
+                margin-top: 1.75rem;
+            }
+
+        /* KPI cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 0.85rem;
+        }
+
+        .kpi-card {
+            background: var(--bright-snow);
+            border-radius: var(--radius);
+            padding: 1.15rem 1.35rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+
+            .kpi-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background: transparent;
+            }
+
+            .kpi-card.accent-blue::before {
+                background: var(--dodger-blue);
+            }
+
+            .kpi-card.accent-green::before {
+                background: var(--jungle-green);
+            }
+
+            .kpi-card.accent-red::before {
+                background: var(--danger-red);
+            }
+
+            .kpi-card.accent-amber::before {
+                background: var(--amber);
+            }
+
+        .kpi-label {
+            font-size: 0.72rem;
+            color: var(--ink-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+
+        .kpi-value {
+            font-size: 1.85rem;
+            font-weight: 700;
+            margin-top: 0.4rem;
+            letter-spacing: -0.025em;
+            line-height: 1.1;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kpi-suffix {
+            font-size: 0.85rem;
+            color: var(--ink-tertiary);
+            font-weight: 500;
+            margin-left: 0.2rem;
+        }
+
+        /* Alerts */
+        .alerts {
+            background: var(--bright-snow);
+            border-left: 3px solid var(--danger-red);
+            border-radius: var(--radius-sm);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            box-shadow: var(--shadow-card);
+        }
+
+            .alerts h3 {
+                margin: 0 0 0.5rem 0;
+                font-size: 0.92rem;
+                color: var(--danger-red);
+                font-weight: 700;
+            }
+
+        .alert-item {
+            padding: 0.4rem 0;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+            .alert-item:first-of-type {
+                border-top: none;
+            }
+
+        .alert-sev {
+            display: inline-block;
+            background: var(--danger-red);
+            color: white;
+            font-size: 0.68rem;
+            padding: 0.16rem 0.5rem;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        /* Tables */
+        .table-card {
+            background: var(--bright-snow);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+        }
+
+        .table-scroll {
+            max-height: calc(var(--row-height) * var(--table-max-rows) + 40px);
+            overflow-y: auto;
         }
 
         table {
             width: 100%;
-            background: white;
-            border-radius: 8px;
             border-collapse: collapse;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 5;
         }
 
         th {
             text-align: left;
-            padding: 0.75rem 1rem;
-            background: #fafafa;
-            font-size: 0.85rem;
-            color: #6e6e73;
+            padding: 0.7rem 1.25rem;
+            background: var(--bright-snow);
+            font-size: 0.68rem;
+            color: var(--ink-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 0 var(--border);
         }
 
         td {
-            padding: 0.75rem 1rem;
-            border-top: 1px solid #ececec;
-            font-size: 0.95rem;
+            padding: 0.75rem 1.25rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+            height: var(--row-height);
+            vertical-align: middle;
+            color: var(--ink);
         }
 
-        .status-succeeded {
-            color: #2da44e;
-            font-weight: 500;
+        tbody tr:first-child td {
+            border-top: none;
         }
 
-        .status-failed {
-            color: #cf222e;
-            font-weight: 500;
+        tbody tr:hover td {
+            background: rgba(45, 148, 249, 0.03);
         }
 
-        .status-queued, .status-inprogress {
-            color: #9a6700;
-            font-weight: 500;
+        td.numeric {
+            font-variant-numeric: tabular-nums;
         }
 
-        .alerts {
-            background: #fff8f5;
-            border-left: 4px solid #cf222e;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1.5rem;
-            border-radius: 4px;
+        td.muted {
+            color: var(--ink-tertiary);
         }
 
-            .alerts h2 {
-                margin: 0 0 0.5rem 0;
-                font-size: 1rem;
-                color: #cf222e;
-            }
-
-        .alert-item {
-            padding: 0.5rem 0;
-            border-top: 1px solid #ffe4dc;
+        /* Layer row tinting */
+        tr.row-bronze td {
+            background: var(--row-bronze-tint);
         }
 
-            .alert-item:first-child {
-                border-top: none;
-            }
-
-        .empty {
-            color: #6e6e73;
-            font-style: italic;
-            padding: 2rem;
-            text-align: center;
+        tr.row-silver td {
+            background: var(--row-silver-tint);
         }
 
-        .refreshed {
-            color: #6e6e73;
+        tr.row-gold td {
+            background: var(--row-gold-tint);
+        }
+
+        tr.row-bronze:hover td {
+            background: var(--row-bronze-tint-hover);
+        }
+
+        tr.row-silver:hover td {
+            background: var(--row-silver-tint-hover);
+        }
+
+        tr.row-gold:hover td {
+            background: var(--row-gold-tint-hover);
+        }
+
+        /* Layer text color in the Layer column */
+        td.layer-bronze {
+            color: var(--bronze);
+            font-weight: 600;
+            text-transform: lowercase;
+        }
+
+        td.layer-silver {
+            color: var(--dodger-blue);
+            font-weight: 600;
+            text-transform: lowercase;
+        }
+
+        td.layer-gold {
+            color: var(--gold);
+            font-weight: 600;
+            text-transform: lowercase;
+        }
+
+        /* Status text color */
+        td.status-cell {
+            font-weight: 600;
             font-size: 0.85rem;
-            margin-top: 1rem;
+        }
+
+        td.status-Succeeded, td.status-passed {
+            color: var(--turf-green);
+        }
+
+        td.status-Failed, td.status-failed {
+            color: var(--danger-red);
+        }
+
+        td.status-Started, td.status-Queued, td.status-InProgress {
+            color: var(--dodger-blue);
+        }
+
+        td.status-warning {
+            color: var(--amber-text);
+        }
+
+        .empty-state {
+            padding: 2.5rem 2rem;
+            text-align: center;
+            color: var(--ink-tertiary);
+            font-style: italic;
+        }
+
+        /* Charts */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 1200px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bright-snow);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 1.35rem 1.5rem;
+            box-shadow: var(--shadow-card);
+        }
+
+            .chart-card.full {
+                grid-column: 1 / -1;
+            }
+
+            .chart-card h3 {
+                margin: 0 0 0.2rem 0;
+                font-size: 1rem;
+                font-weight: 700;
+                color: var(--ink);
+                letter-spacing: -0.01em;
+            }
+
+        .chart-subtitle {
+            margin: 0 0 1rem 0;
+            font-size: 0.82rem;
+            color: var(--ink-tertiary);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 240px;
+        }
+
+        .chart-card.full .chart-container {
+            height: 280px;
+        }
+
+        /* Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(13, 31, 58, 0.05) 0%, rgba(13, 31, 58, 0.08) 50%, rgba(13, 31, 58, 0.05) 100%);
+            background-size: 200% 100%;
+            animation: skeleton 1.4s ease-in-out infinite;
+            border-radius: 4px;
+            display: inline-block;
+            height: 1.5rem;
+            width: 3.5rem;
+        }
+
+        @keyframes skeleton {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Pipeline Monitor</h1>
 
-    <div id="alerts-container"></div>
+    <div class="app">
 
-    <div class="summary" id="summary"></div>
+        <aside>
+            <div class="sidebar-header">
+                <div class="brand-eyebrow">Azure Data PoC</div>
+                <div class="brand-name">Grant PUD<br><span class="brand-accent">Pipeline Monitor</span></div>
+            </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Pipeline</th>
-                <th>Status</th>
-                <th>Started</th>
-                <th>Duration</th>
-                <th>Error</th>
-            </tr>
-        </thead>
-        <tbody id="runs"></tbody>
-    </table>
+            <nav class="sidebar-nav">
+                <div class="nav-indicator" id="nav-indicator"></div>
 
-    <div class="refreshed" id="refreshed"></div>
+                <button class="nav-btn active" data-tab="analytics">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18" />
+                        <path d="M7 14l4-4 4 4 5-5" />
+                    </svg>
+                    <div class="nav-text">
+                        <span class="nav-label">Analytics</span>
+                        <span class="nav-sublabel">Gold layer insights</span>
+                    </div>
+                </button>
+
+                <button class="nav-btn" data-tab="dataquality">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 12l2 2 4-4" />
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                    <div class="nav-text">
+                        <span class="nav-label">Data Quality</span>
+                        <span class="nav-sublabel">Validation results</span>
+                    </div>
+                </button>
+
+                <button class="nav-btn" data-tab="operations">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 8v4l3 2" />
+                    </svg>
+                    <div class="nav-text">
+                        <span class="nav-label">Operations</span>
+                        <span class="nav-sublabel">Pipeline runs &amp; alerts</span>
+                    </div>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="live-indicator">
+                    <strong>Live</strong>
+                    <span class="timestamp" id="last-refreshed">—</span>
+                </div>
+                <a href="https://github.com/devstark03/grant-pud-poc" target="_blank" rel="noopener">View on GitHub →</a>
+            </div>
+        </aside>
+
+        <main>
+            <div class="main-header">
+                <div class="main-eyebrow" id="page-eyebrow">Dashboard</div>
+                <div class="main-title" id="page-title">Analytics</div>
+                <div class="main-subtitle" id="page-subtitle">BPA load and weather correlations from the gold star schema</div>
+            </div>
+
+            <div class="main-content">
+
+                <!-- ANALYTICS -->
+                <section id="tab-analytics" class="tab-panel active">
+                    <h2 class="section-title">Summary</h2>
+                    <div class="kpi-grid" id="analytics-kpis" style="margin-bottom: 1.5rem;">
+                        <div class="kpi-card accent-blue"><div class="kpi-label">Days loaded</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card"><div class="kpi-label">Avg daily demand</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card"><div class="kpi-label">Peak demand</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card accent-green"><div class="kpi-label">Avg max temp</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                    </div>
+
+                    <div class="chart-grid">
+                        <div class="chart-card full">
+                            <h3>BPA daily demand over time</h3>
+                            <div class="chart-subtitle">Total demand, peak demand, and forecast</div>
+                            <div class="chart-container"><canvas id="chart-demand-over-time"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Peak demand vs. max temperature</h3>
+                            <div class="chart-subtitle">Correlation between weather and grid load</div>
+                            <div class="chart-container"><canvas id="chart-demand-vs-temp"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Weekend vs weekday</h3>
+                            <div class="chart-subtitle">Average daily and peak demand by day type</div>
+                            <div class="chart-container"><canvas id="chart-weekend-vs-weekday"></canvas></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DATA QUALITY -->
+                <section id="tab-dataquality" class="tab-panel">
+                    <h2 class="section-title">Summary (24 hours)</h2>
+                    <div class="kpi-grid" id="dq-kpis" style="margin-bottom: 1.5rem;">
+                        <div class="kpi-card accent-blue"><div class="kpi-label">Checks run</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card accent-green"><div class="kpi-label">Passed</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card accent-red"><div class="kpi-label">Failed</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card accent-amber"><div class="kpi-label">Warnings</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card"><div class="kpi-label">Rows validated</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                    </div>
+
+                    <div class="chart-grid">
+                        <div class="chart-card full">
+                            <h3>Pass rate trend</h3>
+                            <div class="chart-subtitle">Daily pass rate across all checks, 14 days</div>
+                            <div class="chart-container"><canvas id="chart-dq-trend"></canvas></div>
+                        </div>
+                    </div>
+
+                    <h2 class="section-title">Tables checked (7 days)</h2>
+                    <div class="table-card">
+                        <div class="table-scroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Layer</th>
+                                        <th>Table</th>
+                                        <th>Checks</th>
+                                        <th>Pass rate</th>
+                                        <th>Failed</th>
+                                        <th>Warnings</th>
+                                        <th>Last check</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dq-tables-tbody">
+                                    <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <h2 class="section-title">Recent checks</h2>
+                    <div class="table-card">
+                        <div class="table-scroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Layer</th>
+                                        <th>Check</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th>Rows failed</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dq-recent-tbody">
+                                    <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- OPERATIONS -->
+                <section id="tab-operations" class="tab-panel">
+                    <div id="alerts-container"></div>
+
+                    <h2 class="section-title">Summary (24 hours)</h2>
+                    <div class="kpi-grid" id="ops-kpis" style="margin-bottom: 1.5rem;">
+                        <div class="kpi-card accent-blue"><div class="kpi-label">Total runs</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card accent-green"><div class="kpi-label">Succeeded</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card accent-red"><div class="kpi-label">Failed</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card"><div class="kpi-label">Success rate</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                        <div class="kpi-card"><div class="kpi-label">Avg duration</div><div class="kpi-value"><span class="skeleton"></span></div></div>
+                    </div>
+
+                    <h2 class="section-title">Recent pipeline runs</h2>
+                    <div class="table-card">
+                        <div class="table-scroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Pipeline</th>
+                                        <th>Status</th>
+                                        <th>Started</th>
+                                        <th>Duration</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="runs-tbody">
+                                    <tr><td colspan="5" class="empty-state">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+
+    </div>
 
     <script>
-  const formatDateTime = (iso) => iso ? new Date(iso).toLocaleString() : '';
-  const formatDuration = (sec) => sec == null ? '' : sec >= 60 ? `${(sec/60).toFixed(1)}m` : `${sec}s`;
-  const statusClass = (s) => `status-${(s || '').toLowerCase().replace(/\s+/g, '')}`;
+        const palette = {
+            dodgerBlue: '#2d94f9',
+            brightSnow: '#f9fafb',
+            prussianBlue: '#102542',
+            jungleGreen: '#57a773',
+            turfGreen: '#157145',
+            amber: '#f2a900',
+            dangerRed: '#cf222e',
+            inkTertiary: '#7a8aa3',
+            borderSoft: 'rgba(13, 31, 58, 0.08)',
+        };
 
-  async function refresh() {
-    try {
-      const [summary, runs, alerts] = await Promise.all([
-        fetch('/api/runs/summary?hours=24').then(r => r.json()),
-        fetch('/api/runs?hours=24&limit=50').then(r => r.json()),
-        fetch('/api/alerts/active').then(r => r.json()),
-      ]);
+        const pageMetadata = {
+            analytics: { eyebrow: 'Dashboard', title: 'Analytics', subtitle: 'BPA load and weather correlations from the gold star schema' },
+            dataquality: { eyebrow: 'Dashboard', title: 'Data Quality', subtitle: 'Validation results and quarantine activity from the silver and gold layers' },
+            operations: { eyebrow: 'Dashboard', title: 'Operations', subtitle: 'Pipeline run history, alerts, and operational health' },
+        };
 
-      const summaryDiv = document.getElementById('summary');
-      summaryDiv.innerHTML = `
-        <div class="card"><div class="card-label">Total runs (24h)</div><div class="card-value">${summary.totalRuns}</div></div>
-        <div class="card"><div class="card-label">Succeeded</div><div class="card-value">${summary.succeededRuns}</div></div>
-        <div class="card"><div class="card-label">Failed</div><div class="card-value">${summary.failedRuns}</div></div>
-        <div class="card"><div class="card-label">Success rate</div><div class="card-value">${summary.successRate ?? '-'}${summary.successRate != null ? '%' : ''}</div></div>
-        <div class="card"><div class="card-label">Avg duration</div><div class="card-value">${formatDuration(summary.averageDurationSeconds)}</div></div>
-      `;
+        Chart.defaults.font.family = "'Inter', -apple-system, system-ui, sans-serif";
+        Chart.defaults.color = palette.inkTertiary;
+        Chart.defaults.borderColor = palette.borderSoft;
 
-      const alertsContainer = document.getElementById('alerts-container');
-      if (alerts.length === 0) {
-        alertsContainer.innerHTML = '';
-      } else {
-        alertsContainer.innerHTML = `
-          <div class="alerts">
-            <h2>${alerts.length} active alert${alerts.length === 1 ? '' : 's'}</h2>
-            ${alerts.map(a => `<div class="alert-item"><strong>${a.severity}</strong> · ${a.pipelineName}: ${a.message}</div>`).join('')}
-          </div>
-        `;
-      }
+        const charts = {};
 
-      const runsBody = document.getElementById('runs');
-      if (runs.length === 0) {
-        runsBody.innerHTML = '<tr><td colspan="5" class="empty">No runs in the last 24 hours.</td></tr>';
-      } else {
-        runsBody.innerHTML = runs.map(r => `
-          <tr>
-            <td>${r.pipelineName}</td>
-            <td class="${statusClass(r.status)}">${r.status}</td>
-            <td>${formatDateTime(r.startTime)}</td>
-            <td>${formatDuration(r.durationSeconds)}</td>
-            <td>${r.errorMessage ? r.errorMessage.substring(0, 80) + (r.errorMessage.length > 80 ? '...' : '') : ''}</td>
-          </tr>
-        `).join('');
-      }
+        // Animated nav indicator
+        const indicator = document.getElementById('nav-indicator');
+        function moveIndicatorTo(btn) {
+            const rect = btn.getBoundingClientRect();
+            const navRect = btn.parentElement.getBoundingClientRect();
+            indicator.style.top = (rect.top - navRect.top + 10) + 'px';
+            indicator.style.height = (rect.height - 20) + 'px';
+        }
 
-      document.getElementById('refreshed').textContent = `Last refreshed: ${new Date().toLocaleTimeString()}`;
-    } catch (err) {
-      console.error('Refresh failed', err);
-    }
-  }
+        // Initial indicator position after layout
+        requestAnimationFrame(() => {
+            const active = document.querySelector('.nav-btn.active');
+            if (active) moveIndicatorTo(active);
+        });
 
-  refresh();
-  setInterval(refresh, 30000);
+        // Recompute on resize so the indicator stays aligned
+        window.addEventListener('resize', () => {
+            const active = document.querySelector('.nav-btn.active');
+            if (active) moveIndicatorTo(active);
+        });
+
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + tab).classList.add('active');
+                moveIndicatorTo(btn);
+
+                const meta = pageMetadata[tab];
+                if (meta) {
+                    document.getElementById('page-eyebrow').textContent = meta.eyebrow;
+                    document.getElementById('page-title').textContent = meta.title;
+                    document.getElementById('page-subtitle').textContent = meta.subtitle;
+                }
+
+                if (tab === 'analytics') refreshAnalytics();
+                if (tab === 'dataquality') refreshDataQuality();
+                if (tab === 'operations') refreshOperations();
+            });
+        });
+
+        function formatDateTime(iso) { if (!iso) return ''; return new Date(iso).toLocaleString(); }
+        function formatDuration(sec) { if (sec == null) return ''; if (sec >= 60) return `${(sec / 60).toFixed(1)} min`; return `${sec}s`; }
+        function formatNumber(n, options = {}) { if (n == null) return '—'; return n.toLocaleString(undefined, options); }
+
+        async function fetchJson(url) {
+            const r = await fetch(url);
+            if (!r.ok) throw new Error(`${url} returned ${r.status}`);
+            return r.json();
+        }
+
+        async function refreshAnalytics() {
+            try {
+                const [summary, demandOverTime, demandVsTemp, weekendData] = await Promise.all([
+                    fetchJson('/api/analytics/summary'),
+                    fetchJson('/api/analytics/demand-over-time'),
+                    fetchJson('/api/analytics/demand-vs-temperature'),
+                    fetchJson('/api/analytics/weekend-vs-weekday'),
+                ]);
+
+                document.getElementById('analytics-kpis').innerHTML = `
+                <div class="kpi-card accent-blue"><div class="kpi-label">Days loaded</div><div class="kpi-value">${summary.totalDays ?? '—'}</div></div>
+                <div class="kpi-card"><div class="kpi-label">Avg daily demand</div><div class="kpi-value">${formatNumber(summary.avgDailyDemandMwh, { maximumFractionDigits: 0 })}<span class="kpi-suffix">MWh</span></div></div>
+                <div class="kpi-card"><div class="kpi-label">Peak demand</div><div class="kpi-value">${formatNumber(summary.maxPeakDemandMwh, { maximumFractionDigits: 0 })}<span class="kpi-suffix">MWh</span></div></div>
+                <div class="kpi-card accent-green"><div class="kpi-label">Avg max temp</div><div class="kpi-value">${formatNumber(summary.avgMaxTempC, { maximumFractionDigits: 1 })}<span class="kpi-suffix">°C</span></div></div>
+              `;
+
+                renderDemandOverTime(demandOverTime);
+                renderDemandVsTemp(demandVsTemp);
+                renderWeekendVsWeekday(weekendData);
+            } catch (err) { console.error('Analytics refresh failed', err); }
+        }
+
+        async function refreshDataQuality() {
+            try {
+                const [summary, recent, byTable, trend] = await Promise.all([
+                    fetchJson('/api/dq/summary?hours=24'),
+                    fetchJson('/api/dq/recent?limit=50'),
+                    fetchJson('/api/dq/by-table?hours=168'),
+                    fetchJson('/api/dq/pass-rate-trend?days=14'),
+                ]);
+
+                document.getElementById('dq-kpis').innerHTML = `
+                <div class="kpi-card accent-blue"><div class="kpi-label">Checks run</div><div class="kpi-value">${summary.totalChecks ?? 0}</div></div>
+                <div class="kpi-card accent-green"><div class="kpi-label">Passed</div><div class="kpi-value">${summary.passed ?? 0}</div></div>
+                <div class="kpi-card accent-red"><div class="kpi-label">Failed</div><div class="kpi-value">${summary.failed ?? 0}</div></div>
+                <div class="kpi-card accent-amber"><div class="kpi-label">Warnings</div><div class="kpi-value">${summary.warnings ?? 0}</div></div>
+                <div class="kpi-card"><div class="kpi-label">Rows validated</div><div class="kpi-value">${formatNumber(summary.totalRowsChecked, { maximumFractionDigits: 0 })}</div></div>
+              `;
+
+                renderDqTrend(trend);
+
+                const tablesTbody = document.getElementById('dq-tables-tbody');
+                tablesTbody.innerHTML = byTable.length === 0
+                    ? '<tr><td colspan="7" class="empty-state">No checks recorded.</td></tr>'
+                    : byTable.map(t => {
+                        const layerClass = t.layer ? `row-${t.layer.toLowerCase()}` : '';
+                        const layerCellClass = t.layer ? `layer-${t.layer.toLowerCase()}` : '';
+                        return `
+                              <tr class="${layerClass}">
+                                <td class="${layerCellClass}">${t.layer ?? ''}</td>
+                                <td class="muted">${t.tableName}</td>
+                                <td class="numeric">${t.totalChecks}</td>
+                                <td class="numeric">${t.passRate ?? '—'}${t.passRate != null ? '%' : ''}</td>
+                                <td class="numeric">${t.failed}</td>
+                                <td class="numeric">${t.warnings}</td>
+                                <td class="muted">${formatDateTime(t.lastCheck)}</td>
+                              </tr>
+                            `;
+                    }).join('');
+
+                const recentTbody = document.getElementById('dq-recent-tbody');
+                recentTbody.innerHTML = recent.length === 0
+                    ? '<tr><td colspan="6" class="empty-state">No checks in history.</td></tr>'
+                    : recent.map(r => {
+                        const layerClass = r.layer ? `row-${r.layer.toLowerCase()}` : '';
+                        const layerCellClass = r.layer ? `layer-${r.layer.toLowerCase()}` : '';
+                        return `
+                              <tr class="${layerClass}">
+                                <td class="muted">${formatDateTime(r.checkTimestamp)}</td>
+                                <td class="${layerCellClass}">${r.layer ?? ''}</td>
+                                <td title="${r.tableName}">${r.checkName}</td>
+                                <td class="muted">${r.checkCategory}</td>
+                                <td class="status-cell status-${r.status}">${r.status}</td>
+                                <td class="numeric">${r.rowsFailed > 0 ? r.rowsFailed.toLocaleString() : ''}</td>
+                              </tr>
+                            `;
+                    }).join('');
+            } catch (err) { console.error('Data Quality refresh failed', err); }
+        }
+
+        async function refreshOperations() {
+            try {
+                const [summary, runs, alerts] = await Promise.all([
+                    fetchJson('/api/runs/summary?hours=24'),
+                    fetchJson('/api/runs?hours=24&limit=50'),
+                    fetchJson('/api/alerts/active'),
+                ]);
+
+                document.getElementById('ops-kpis').innerHTML = `
+                <div class="kpi-card accent-blue"><div class="kpi-label">Total runs</div><div class="kpi-value">${summary.totalRuns ?? 0}</div></div>
+                <div class="kpi-card accent-green"><div class="kpi-label">Succeeded</div><div class="kpi-value">${summary.succeededRuns ?? 0}</div></div>
+                <div class="kpi-card accent-red"><div class="kpi-label">Failed</div><div class="kpi-value">${summary.failedRuns ?? 0}</div></div>
+                <div class="kpi-card"><div class="kpi-label">Success rate</div><div class="kpi-value">${summary.successRate ?? '—'}<span class="kpi-suffix">${summary.successRate != null ? '%' : ''}</span></div></div>
+                <div class="kpi-card"><div class="kpi-label">Avg duration</div><div class="kpi-value">${formatDuration(summary.averageDurationSeconds) || '—'}</div></div>
+              `;
+
+                const alertsContainer = document.getElementById('alerts-container');
+                alertsContainer.innerHTML = alerts.length === 0 ? '' : `
+                <div class="alerts">
+                  <h3>${alerts.length} active alert${alerts.length === 1 ? '' : 's'}</h3>
+                  ${alerts.map(a => `<div class="alert-item"><span class="alert-sev">${a.severity}</span><strong>${a.pipelineName}</strong>: ${a.message}</div>`).join('')}
+                </div>
+              `;
+
+                const tbody = document.getElementById('runs-tbody');
+                tbody.innerHTML = runs.length === 0
+                    ? '<tr><td colspan="5" class="empty-state">No runs in the last 24 hours.</td></tr>'
+                    : runs.map(r => `
+                        <tr>
+                          <td>${r.pipelineName}</td>
+                          <td class="status-cell status-${r.status}">${r.status}</td>
+                          <td class="muted">${formatDateTime(r.startTime)}</td>
+                          <td class="numeric">${formatDuration(r.durationSeconds)}</td>
+                          <td class="muted">${r.errorMessage ? `<span title="${r.errorMessage}">${r.errorMessage.substring(0, 80)}${r.errorMessage.length > 80 ? '...' : ''}</span>` : ''}</td>
+                        </tr>
+                      `).join('');
+
+                const now = new Date();
+                document.getElementById('last-refreshed').textContent =
+                    now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            } catch (err) { console.error('Operations refresh failed', err); }
+        }
+
+        function renderDemandOverTime(data) {
+            const ctx = document.getElementById('chart-demand-over-time').getContext('2d');
+            if (charts.demandOverTime) charts.demandOverTime.destroy();
+            charts.demandOverTime = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [
+                        { label: 'Total demand (MWh)', data: data.map(d => d.demandTotalMwh), borderColor: palette.dodgerBlue, backgroundColor: palette.dodgerBlue + '15', tension: 0.2, fill: true, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+                        { label: 'Peak demand (MWh)', data: data.map(d => d.demandPeakMwh), borderColor: palette.turfGreen, backgroundColor: 'transparent', tension: 0.2, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2, borderDash: [4, 4] },
+                        { label: 'Forecast (MWh)', data: data.map(d => d.demandForecastMwh), borderColor: palette.jungleGreen, backgroundColor: 'transparent', tension: 0.2, pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.5, borderDash: [2, 3] },
+                    ],
+                },
+                options: chartOptions({}),
+            });
+        }
+
+        function renderDemandVsTemp(data) {
+            const ctx = document.getElementById('chart-demand-vs-temp').getContext('2d');
+            if (charts.demandVsTemp) charts.demandVsTemp.destroy();
+            charts.demandVsTemp = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets: [{ label: 'Daily', data: data.map(d => ({ x: d.temperatureMaxC, y: d.demandPeakMwh })), backgroundColor: palette.dodgerBlue + 'cc', borderColor: palette.prussianBlue, borderWidth: 1, pointRadius: 4 }] },
+                options: chartOptions({ xTitle: 'Max temperature (°C)', yTitle: 'Peak demand (MWh)' }),
+            });
+        }
+
+        function renderWeekendVsWeekday(data) {
+            const ctx = document.getElementById('chart-weekend-vs-weekday').getContext('2d');
+            if (charts.weekendVsWeekday) charts.weekendVsWeekday.destroy();
+            charts.weekendVsWeekday = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.dayType),
+                    datasets: [
+                        { label: 'Avg daily demand (MWh)', data: data.map(d => d.avgDemand), backgroundColor: palette.dodgerBlue, borderRadius: 6 },
+                        { label: 'Avg peak demand (MWh)', data: data.map(d => d.avgPeak), backgroundColor: palette.jungleGreen, borderRadius: 6 },
+                    ],
+                },
+                options: chartOptions({}),
+            });
+        }
+
+        function renderDqTrend(data) {
+            const ctx = document.getElementById('chart-dq-trend').getContext('2d');
+            if (charts.dqTrend) charts.dqTrend.destroy();
+            charts.dqTrend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [
+                        { label: 'Pass rate (%)', data: data.map(d => d.passRate), borderColor: palette.jungleGreen, backgroundColor: palette.jungleGreen + '20', tension: 0.2, fill: true, pointRadius: 3, pointHoverRadius: 5, borderWidth: 2, yAxisID: 'y' },
+                        { label: 'Checks executed', data: data.map(d => d.totalChecks), borderColor: palette.dodgerBlue, backgroundColor: 'transparent', tension: 0.2, pointRadius: 3, pointHoverRadius: 5, borderWidth: 2, borderDash: [4, 4], yAxisID: 'y1' },
+                    ],
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14, font: { size: 11 } } },
+                        tooltip: { backgroundColor: palette.prussianBlue, titleColor: palette.brightSnow, bodyColor: palette.brightSnow, padding: 10, cornerRadius: 6 },
+                    },
+                    scales: {
+                        x: { grid: { color: palette.borderSoft, drawBorder: false }, ticks: { font: { size: 10 } } },
+                        y: { position: 'left', min: 0, max: 100, title: { display: true, text: 'Pass rate (%)', color: palette.inkTertiary }, grid: { color: palette.borderSoft, drawBorder: false }, ticks: { font: { size: 10 } } },
+                        y1: { position: 'right', beginAtZero: true, title: { display: true, text: 'Checks executed', color: palette.inkTertiary }, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 } } },
+                    },
+                },
+            });
+        }
+
+        function chartOptions({ xTitle, yTitle }) {
+            return {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14, font: { size: 11 } } },
+                    tooltip: { backgroundColor: palette.prussianBlue, titleColor: palette.brightSnow, bodyColor: palette.brightSnow, padding: 10, cornerRadius: 6 },
+                },
+                scales: {
+                    x: { title: xTitle ? { display: true, text: xTitle, color: palette.inkTertiary } : undefined, grid: { color: palette.borderSoft, drawBorder: false }, ticks: { font: { size: 10 } } },
+                    y: { title: yTitle ? { display: true, text: yTitle, color: palette.inkTertiary } : undefined, grid: { color: palette.borderSoft, drawBorder: false }, ticks: { font: { size: 10 } } },
+                },
+            };
+        }
+
+        refreshAnalytics();
+        refreshDataQuality();
+        refreshOperations();
+        setInterval(refreshOperations, 30000);
     </script>
+
 </body>
 </html>
