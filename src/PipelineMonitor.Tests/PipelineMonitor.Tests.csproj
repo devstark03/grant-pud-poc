@@ -21,7 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PipelineMonitor.Worker\PipelineMonitor.Worker.csproj" />
     <ProjectReference Include="..\PipelineMonitor.Api\PipelineMonitor.Api.csproj" />
   </ItemGroup>
 
