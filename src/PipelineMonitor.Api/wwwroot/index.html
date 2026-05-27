@@ -623,13 +623,456 @@
                 background-position: -200% 0;
             }
         }
+
+        /* ── Mobile-only elements (hidden on desktop) ── */
+        .mobile-topbar,
+        .carousel-counter {
+            display: none;
+        }
+
+        .hamburger {
+            background: none;
+            border: none;
+            color: var(--on-dark);
+            cursor: pointer;
+            padding: 0.5rem;
+            margin: -0.5rem;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .hamburger svg {
+            display: block;
+        }
+
+        /* Drawer backdrop */
+        .drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 45;
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+            transition: opacity 0.28s var(--ease-out), visibility 0.28s;
+            -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+        }
+
+        .drawer-backdrop.visible {
+            opacity: 1;
+            pointer-events: auto;
+            visibility: visible;
+        }
+
+        /* ── Mobile ── */
+        @media (max-width: 768px) {
+            html, body {
+                height: auto;
+                overflow: visible;
+            }
+
+            /* Sticky mobile top bar */
+            .mobile-topbar {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                background: var(--prussian-blue);
+                color: var(--on-dark);
+                padding: 0.8rem 1.15rem;
+                position: sticky;
+                top: 0;
+                z-index: 40;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+            }
+
+            .mobile-topbar .brand-name {
+                font-size: 0.95rem;
+                font-weight: 600;
+                letter-spacing: -0.015em;
+                white-space: nowrap;
+            }
+
+            .mobile-topbar .brand-accent {
+                color: var(--dodger-blue);
+            }
+
+            .mobile-topbar .live-indicator {
+                margin-left: auto;
+            }
+
+            .app {
+                flex-direction: column;
+                height: auto;
+                min-height: 0;
+                overflow: visible;
+            }
+
+            /* Sidebar becomes slide-in drawer */
+            aside {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 280px;
+                z-index: 50;
+                transform: translateX(-100%);
+                transition: transform 0.32s var(--ease-out);
+                box-shadow: none;
+                overflow-y: auto;
+            }
+
+            aside.open {
+                transform: translateX(0);
+                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+            }
+
+            .nav-indicator {
+                display: none;
+            }
+
+            .nav-btn {
+                min-height: 48px;
+            }
+
+            /* Main area */
+            main {
+                overflow: visible;
+                min-width: 0;
+                width: 100%;
+            }
+
+            .main-header {
+                padding: 1.1rem 1.15rem 1rem;
+            }
+
+            .main-eyebrow {
+                font-size: 0.62rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .main-title {
+                font-size: 1.25rem;
+            }
+
+            .main-subtitle {
+                font-size: 0.82rem;
+                margin-top: 0.25rem;
+            }
+
+            .main-content {
+                padding: 1.15rem;
+                overflow-y: visible;
+                overflow-x: hidden;
+            }
+
+            /* KPI grid: 2 columns */
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.6rem;
+            }
+
+            .kpi-card {
+                padding: 0.9rem 1rem;
+                border-radius: var(--radius-sm);
+            }
+
+            .kpi-label {
+                font-size: 0.65rem;
+            }
+
+            .kpi-value {
+                font-size: 1.45rem;
+                margin-top: 0.3rem;
+            }
+
+            .kpi-suffix {
+                font-size: 0.75rem;
+            }
+
+            /* Charts: contained, no overflow */
+            .chart-grid {
+                grid-template-columns: 1fr;
+                gap: 0.85rem;
+            }
+
+            .chart-card {
+                padding: 1rem 1.1rem;
+                overflow: hidden;
+            }
+
+            .chart-card h3 {
+                font-size: 0.92rem;
+            }
+
+            .chart-subtitle {
+                font-size: 0.76rem;
+            }
+
+            .chart-container {
+                height: 220px;
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .chart-card.full .chart-container {
+                height: 240px;
+            }
+
+            /* Tables → horizontal card carousel */
+            .table-card {
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+                background: transparent;
+                overflow: visible;
+            }
+
+            .table-scroll {
+                overflow: visible;
+                max-height: none;
+            }
+
+            table, thead, tbody, tr, th, td {
+                display: block;
+            }
+
+            thead {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+            }
+
+            table {
+                min-width: 0;
+            }
+
+            tbody {
+                display: flex;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                gap: 0.65rem;
+                padding: 0.25rem 0.15rem 0.75rem 0.15rem;
+                margin: 0 -0.15rem;
+            }
+
+            /* Hide scrollbar but keep function */
+            tbody::-webkit-scrollbar {
+                display: none;
+            }
+            tbody {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+
+            tbody tr {
+                flex: 0 0 82%;
+                scroll-snap-align: start;
+                background: var(--bright-snow);
+                border-radius: var(--radius-sm);
+                border: 1px solid var(--border);
+                box-shadow: var(--shadow-card);
+                padding: 0;
+                overflow: hidden;
+                position: relative;
+            }
+
+            /* Layer header stripe */
+            tbody tr::before {
+                content: '';
+                display: block;
+                height: 3px;
+                background: var(--border);
+            }
+
+            tbody tr.row-bronze::before {
+                background: var(--bronze);
+            }
+
+            tbody tr.row-silver::before {
+                background: var(--dodger-blue);
+            }
+
+            tbody tr.row-gold::before {
+                background: var(--gold);
+            }
+
+            /* Reset row tinting on mobile cards */
+            tr.row-bronze td,
+            tr.row-silver td,
+            tr.row-gold td,
+            tr.row-bronze:hover td,
+            tr.row-silver:hover td,
+            tr.row-gold:hover td {
+                background: transparent;
+            }
+
+            tbody tr:hover td {
+                background: transparent;
+            }
+
+            td {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 0.75rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+                height: auto;
+                border-top: 1px solid var(--border);
+                text-align: right;
+            }
+
+            tbody tr td:first-child {
+                border-top: none;
+            }
+
+            td::before {
+                content: attr(data-label);
+                font-size: 0.68rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: var(--ink-tertiary);
+                flex-shrink: 0;
+                text-align: left;
+            }
+
+            td.empty-state {
+                text-align: center;
+                justify-content: center;
+                padding: 1.5rem 1rem;
+            }
+
+            td.empty-state::before {
+                display: none;
+            }
+
+            /* Carousel counter pill */
+            .carousel-counter {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.4rem;
+                padding: 0.35rem 0;
+                font-size: 0.72rem;
+                font-weight: 600;
+                color: var(--ink-tertiary);
+                letter-spacing: 0.02em;
+                font-variant-numeric: tabular-nums;
+            }
+
+            .carousel-dots {
+                display: flex;
+                gap: 4px;
+            }
+
+            .carousel-dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: var(--border);
+                transition: background 0.2s, width 0.2s;
+            }
+
+            .carousel-dot.active {
+                background: var(--dodger-blue);
+                width: 16px;
+                border-radius: 3px;
+            }
+
+            .section-title {
+                font-size: 0.65rem;
+            }
+
+            .section-title:not(:first-child) {
+                margin-top: 1.4rem;
+            }
+
+            /* Alerts */
+            .alerts {
+                padding: 0.85rem 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .alerts h3 {
+                font-size: 0.85rem;
+            }
+
+            .alert-item {
+                font-size: 0.82rem;
+            }
+        }
+
+        /* ── Small phones ── */
+        @media (max-width: 400px) {
+            .mobile-topbar {
+                padding: 0.7rem 0.85rem;
+            }
+
+            .mobile-topbar .brand-name {
+                font-size: 0.85rem;
+            }
+
+            .main-header {
+                padding: 0.9rem 0.85rem;
+            }
+
+            .main-title {
+                font-size: 1.1rem;
+            }
+
+            .main-subtitle {
+                font-size: 0.78rem;
+            }
+
+            .main-content {
+                padding: 0.85rem;
+            }
+
+            .kpi-value {
+                font-size: 1.25rem;
+            }
+
+            .kpi-card {
+                padding: 0.75rem 0.85rem;
+            }
+
+            .chart-container {
+                height: 190px;
+            }
+
+            .chart-card.full .chart-container {
+                height: 210px;
+            }
+
+            td {
+                padding: 0.45rem 0.85rem;
+                font-size: 0.82rem;
+            }
+        }
     </style>
 </head>
 <body>
 
+    <div class="mobile-topbar" id="mobile-topbar">
+        <button class="hamburger" id="hamburger-btn" aria-label="Open menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="brand-name">Grant PUD <span class="brand-accent">Pipeline Monitor</span></div>
+        <div class="live-indicator">
+            <strong>Live</strong>
+            <span class="timestamp" id="mobile-last-refreshed"></span>
+        </div>
+    </div>
+
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
     <div class="app">
 
-        <aside>
+        <aside id="sidebar">
             <div class="sidebar-header">
                 <div class="brand-eyebrow">Azure Data PoC</div>
                 <div class="brand-name">Grant PUD<br><span class="brand-accent">Pipeline Monitor</span></div>
@@ -867,6 +1310,26 @@
             if (active) moveIndicatorTo(active);
         });
 
+        // Mobile drawer toggle
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('drawer-backdrop');
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+
+        function openDrawer() {
+            sidebar.classList.add('open');
+            backdrop.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawer() {
+            sidebar.classList.remove('open');
+            backdrop.classList.remove('visible');
+            document.body.style.overflow = '';
+        }
+
+        hamburgerBtn.addEventListener('click', openDrawer);
+        backdrop.addEventListener('click', closeDrawer);
+
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
@@ -882,6 +1345,9 @@
                     document.getElementById('page-title').textContent = meta.title;
                     document.getElementById('page-subtitle').textContent = meta.subtitle;
                 }
+
+                // Close drawer on mobile after selecting a tab
+                closeDrawer();
 
                 if (tab === 'analytics') refreshAnalytics();
                 if (tab === 'dataquality') refreshDataQuality();
@@ -948,13 +1414,13 @@
                         const layerCellClass = t.layer ? `layer-${t.layer.toLowerCase()}` : '';
                         return `
                               <tr class="${layerClass}">
-                                <td class="${layerCellClass}">${t.layer ?? ''}</td>
-                                <td class="muted">${t.tableName}</td>
-                                <td class="numeric">${t.totalChecks}</td>
-                                <td class="numeric">${t.passRate ?? '—'}${t.passRate != null ? '%' : ''}</td>
-                                <td class="numeric">${t.failed}</td>
-                                <td class="numeric">${t.warnings}</td>
-                                <td class="muted">${formatDateTime(t.lastCheck)}</td>
+                                <td class="${layerCellClass}" data-label="Layer">${t.layer ?? ''}</td>
+                                <td class="muted" data-label="Table">${t.tableName}</td>
+                                <td class="numeric" data-label="Checks">${t.totalChecks}</td>
+                                <td class="numeric" data-label="Pass rate">${t.passRate ?? '—'}${t.passRate != null ? '%' : ''}</td>
+                                <td class="numeric" data-label="Failed">${t.failed}</td>
+                                <td class="numeric" data-label="Warnings">${t.warnings}</td>
+                                <td class="muted" data-label="Last check">${formatDateTime(t.lastCheck)}</td>
                               </tr>
                             `;
                     }).join('');
@@ -967,12 +1433,12 @@
                         const layerCellClass = r.layer ? `layer-${r.layer.toLowerCase()}` : '';
                         return `
                               <tr class="${layerClass}">
-                                <td class="muted">${formatDateTime(r.checkTimestamp)}</td>
-                                <td class="${layerCellClass}">${r.layer ?? ''}</td>
-                                <td title="${r.tableName}">${r.checkName}</td>
-                                <td class="muted">${r.checkCategory}</td>
-                                <td class="status-cell status-${r.status}">${r.status}</td>
-                                <td class="numeric">${r.rowsFailed > 0 ? r.rowsFailed.toLocaleString() : ''}</td>
+                                <td class="muted" data-label="Time">${formatDateTime(r.checkTimestamp)}</td>
+                                <td class="${layerCellClass}" data-label="Layer">${r.layer ?? ''}</td>
+                                <td title="${r.tableName}" data-label="Check">${r.checkName}</td>
+                                <td class="muted" data-label="Category">${r.checkCategory}</td>
+                                <td class="status-cell status-${r.status}" data-label="Status">${r.status}</td>
+                                <td class="numeric" data-label="Rows failed">${r.rowsFailed > 0 ? r.rowsFailed.toLocaleString() : ''}</td>
                               </tr>
                             `;
                     }).join('');
@@ -1008,17 +1474,19 @@
                     ? '<tr><td colspan="5" class="empty-state">No runs in the last 24 hours.</td></tr>'
                     : runs.map(r => `
                         <tr>
-                          <td>${r.pipelineName}</td>
-                          <td class="status-cell status-${r.status}">${r.status}</td>
-                          <td class="muted">${formatDateTime(r.startTime)}</td>
-                          <td class="numeric">${formatDuration(r.durationSeconds)}</td>
-                          <td class="muted">${r.errorMessage ? `<span title="${r.errorMessage}">${r.errorMessage.substring(0, 80)}${r.errorMessage.length > 80 ? '...' : ''}</span>` : ''}</td>
+                          <td data-label="Pipeline">${r.pipelineName}</td>
+                          <td class="status-cell status-${r.status}" data-label="Status">${r.status}</td>
+                          <td class="muted" data-label="Started">${formatDateTime(r.startTime)}</td>
+                          <td class="numeric" data-label="Duration">${formatDuration(r.durationSeconds)}</td>
+                          <td class="muted" data-label="Notes">${r.errorMessage ? `<span title="${r.errorMessage}">${r.errorMessage.substring(0, 80)}${r.errorMessage.length > 80 ? '...' : ''}</span>` : ''}</td>
                         </tr>
                       `).join('');
 
                 const now = new Date();
-                document.getElementById('last-refreshed').textContent =
-                    now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const ts = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                document.getElementById('last-refreshed').textContent = ts;
+                const mobileTs = document.getElementById('mobile-last-refreshed');
+                if (mobileTs) mobileTs.textContent = ts;
             } catch (err) { console.error('Operations refresh failed', err); }
         }
 
@@ -1107,6 +1575,79 @@
                 },
             };
         }
+
+        // Carousel counters for mobile card carousels
+        const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+        const carouselState = new WeakMap();
+
+        function initCarousel(tbody) {
+            const cards = Array.from(tbody.querySelectorAll('tr'));
+            const tableCard = tbody.closest('.table-card');
+            if (!tableCard) return;
+
+            // Tear down previous instance for THIS tbody
+            const prev = carouselState.get(tbody);
+            if (prev) {
+                tbody.removeEventListener('scroll', prev.handler);
+                if (prev.counter.parentElement) prev.counter.remove();
+            }
+
+            if (cards.length <= 1) {
+                carouselState.delete(tbody);
+                return;
+            }
+
+            const counter = document.createElement('div');
+            counter.className = 'carousel-counter';
+
+            const useCompact = cards.length > 12;
+
+            if (useCompact) {
+                counter.innerHTML = `<span class="carousel-pos">1</span> of <span>${cards.length}</span>`;
+            } else {
+                const dotsHtml = cards.map((_, i) =>
+                    `<span class="carousel-dot${i === 0 ? ' active' : ''}"></span>`
+                ).join('');
+                counter.innerHTML = `<div class="carousel-dots">${dotsHtml}</div>`;
+            }
+
+            tableCard.appendChild(counter);
+
+            let ticking = false;
+            const handler = () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => {
+                    const scrollLeft = tbody.scrollLeft;
+                    const firstCard = cards[0];
+                    const gap = parseFloat(getComputedStyle(tbody).gap) || 10;
+                    const cardWidth = firstCard.offsetWidth + gap;
+                    const idx = Math.round(scrollLeft / cardWidth);
+                    const clamped = Math.max(0, Math.min(idx, cards.length - 1));
+
+                    if (useCompact) {
+                        const pos = counter.querySelector('.carousel-pos');
+                        if (pos) pos.textContent = clamped + 1;
+                    } else {
+                        counter.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+                            dot.classList.toggle('active', i === clamped);
+                        });
+                    }
+                    ticking = false;
+                });
+            };
+
+            tbody.addEventListener('scroll', handler);
+            carouselState.set(tbody, { handler, counter });
+        }
+
+        // Each tbody gets its own observer so mutations only re-init that specific carousel
+        document.querySelectorAll('tbody').forEach(tb => {
+            new MutationObserver(() => {
+                if (!isMobile()) return;
+                initCarousel(tb);
+            }).observe(tb, { childList: true });
+        });
 
         refreshAnalytics();
         refreshDataQuality();
