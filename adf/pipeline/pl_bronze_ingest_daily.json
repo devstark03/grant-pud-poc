@@ -298,6 +298,95 @@
 						"job_id": 1116563080006767
 					}
 				}
+			},
+			{
+				"name": "Notify_PipelineSucceeded",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Trigger_Databricks_Job",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/json"
+					},
+					"url": "https://app-grantpud-poc-monitor-ezfxdeg7atcreygg.canadaeast-01.azurewebsites.net/api/runs/notify",
+					"body": {
+						"value": "@json(concat(\n'{',\n'\"pipelineRunId\":\"', pipeline().RunId, '\",',\n'\"pipelineName\":\"', pipeline().Pipeline, '\",',\n'\"dataFactoryName\":\"', pipeline().DataFactory, '\",',\n'\"status\":\"Succeeded\",',\n'\"startTime\":\"', pipeline().TriggerTime, '\",',\n'\"endTime\":\"', utcnow(), '\",',\n'\"errorMessage\":null,',\n'\"notificationId\":\"', pipeline().RunId, '-succeeded\"',\n'}'\n))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Notify_PipelineFailed",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Trigger_Databricks_Job",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Get_Databricks_PAT",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Get_EIA_ApiKey",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Get_NOAA_Token",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Copy_EIA_to_Bronze",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Copy_NOAA_to_Bronze",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"url": "https://app-grantpud-poc-monitor-ezfxdeg7atcreygg.canadaeast-01.azurewebsites.net/api/runs/notify",
+					"body": {
+						"value": "@json(concat(\n'{',\n'\"pipelineRunId\":\"', pipeline().RunId, '\",',\n'\"pipelineName\":\"', pipeline().Pipeline, '\",',\n'\"dataFactoryName\":\"', pipeline().DataFactory, '\",',\n'\"status\":\"Failed\",',\n'\"startTime\":\"', pipeline().TriggerTime, '\",',\n'\"endTime\":\"', utcnow(), '\",',\n'\"errorMessage\":\"Pipeline activity failed. Check ADF Monitor for details.\",',\n'\"notificationId\":\"', pipeline().RunId, '-failed\"',\n'}'\n))",
+						"type": "Expression"
+					}
+				}
 			}
 		],
 		"parameters": {
