@@ -169,26 +169,6 @@ Each system uses the deployment pattern most appropriate to its runtime:
 
 The current setup supports a single-environment PoC. The architecture is ready to extend to multi-environment promotion when needed.
 
-## Status
-
-Complete:
-
-- Azure infrastructure provisioned (storage, ADF, Databricks, Key Vault, SQL, App Service, Access Connector)
-- Unity Catalog with external locations and three-tier schema (`grantpud.silver`, `grantpud.gold`)
-- ADF bronze ingestion pipeline with daily trigger and managed identity authentication
-- Historical backfill pipeline with parameterized date range
-- Silver layer for both NOAA and EIA with schema enforcement and data quality checks
-- Gold star schema with SCD2 dimension and idempotent MERGE writes
-- End-to-end ADF-to-Databricks orchestration
-
-In progress:
-
-- .NET 8 monitoring service consuming ADF Event Grid events
-- CI/CD workflows (currently scaffolded as stubs)
-- Microsoft Purview scan and lineage diagram
-- Documented runbook for failure modes
-- Flat-file ingestion path (reference data via CSV)
-
 ## Local setup
 
 Reproducing this project requires an Azure subscription and the Azure CLI, .NET 8 SDK, and Databricks CLI. Full setup details are in `docs/architecture.md`.
