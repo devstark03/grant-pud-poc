@@ -9,6 +9,9 @@ public static class AnalyticsEndpoints {
         app.MapGet("/api/analytics/demand-over-time", GetDemandOverTimeAsync).WithName("DemandOverTime");
         app.MapGet("/api/analytics/demand-vs-temperature", GetDemandVsTemperatureAsync).WithName("DemandVsTemperature");
         app.MapGet("/api/analytics/weekend-vs-weekday", GetWeekendVsWeekdayAsync).WithName("WeekendVsWeekday");
+        app.MapGet("/api/analytics/demand-by-day-of-week", GetDemandByDayOfWeekAsync).WithName("DemandByDayOfWeek");
+        app.MapGet("/api/analytics/energy-balance", GetEnergyBalanceAsync).WithName("EnergyBalance");
+        app.MapGet("/api/analytics/load-duration", GetLoadDurationAsync).WithName("LoadDuration");
         app.MapGet("/api/dq/summary", GetDqSummaryAsync).WithName("DqSummary");
         app.MapGet("/api/dq/recent", GetDqRecentAsync).WithName("DqRecent");
         app.MapGet("/api/dq/by-table", GetDqByTableAsync).WithName("DqByTable");
@@ -53,17 +56,17 @@ public static class AnalyticsEndpoints {
     int hours = 24,
     CancellationToken cancellationToken = default) {
         var sql = $@"
-        SELECT
-            COUNT(*) AS total_checks,
-            SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) AS passed,
-            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
-            SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings,
-            COUNT(DISTINCT table_name) AS tables_checked,
-            SUM(rows_checked) AS total_rows_checked,
-            SUM(rows_failed) AS total_rows_failed
-        FROM grantpud.observability.dq_check_results
-        WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(hours)} HOURS
-    ";
+            SELECT
+                COUNT(*) AS total_checks,
+                SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) AS passed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings,
+                COUNT(DISTINCT table_name) AS tables_checked,
+                SUM(rows_checked) AS total_rows_checked,
+                SUM(rows_failed) AS total_rows_failed
+            FROM grantpud.observability.dq_check_results
+            WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(hours)} HOURS
+        ";
 
         var result = await client.ExecuteAsync(sql, cancellationToken);
         if (result.Rows.Count == 0) {
@@ -97,26 +100,25 @@ public static class AnalyticsEndpoints {
         CancellationToken cancellationToken = default) {
         var safeLimit = Math.Clamp(limit, 1, 200);
         var sql = $@"
-        SELECT
-            check_timestamp,
-            layer,
-            table_name,
-            check_category,
-            check_name,
-            severity,
-            status,
-            rows_checked,
-            rows_failed,
-            failure_rate_pct,
-            details
-        FROM grantpud.observability.dq_check_results
-        ORDER BY check_timestamp DESC
-        LIMIT {safeLimit}
-    ";
+            SELECT
+                check_timestamp,
+                layer,
+                table_name,
+                check_category,
+                check_name,
+                severity,
+                status,
+                rows_checked,
+                rows_failed,
+                failure_rate_pct,
+                details
+            FROM grantpud.observability.dq_check_results
+            ORDER BY check_timestamp DESC
+            LIMIT {safeLimit}
+        ";
 
         var result = await client.ExecuteAsync(sql, cancellationToken);
-        var data = result.Rows.Select(r => new
-        {
+        var data = result.Rows.Select(r => new {
             checkTimestamp = r[0],
             layer = r[1],
             tableName = r[2],
@@ -139,23 +141,22 @@ public static class AnalyticsEndpoints {
         int hours = 168,
         CancellationToken cancellationToken = default) {
         var sql = $@"
-        SELECT
-            layer,
-            table_name,
-            COUNT(*) AS total_checks,
-            SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) AS passed,
-            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
-            SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings,
-            MAX(check_timestamp) AS last_check
-        FROM grantpud.observability.dq_check_results
-        WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(hours)} HOURS
-        GROUP BY layer, table_name
-        ORDER BY layer, table_name
-    ";
+            SELECT
+                layer,
+                table_name,
+                COUNT(*) AS total_checks,
+                SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) AS passed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings,
+                MAX(check_timestamp) AS last_check
+            FROM grantpud.observability.dq_check_results
+            WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(hours)} HOURS
+            GROUP BY layer, table_name
+            ORDER BY layer, table_name
+        ";
 
         var result = await client.ExecuteAsync(sql, cancellationToken);
-        var data = result.Rows.Select(r =>
-        {
+        var data = result.Rows.Select(r => {
             var total = ParseInt(r[2]) ?? 0;
             var passed = ParseInt(r[3]) ?? 0;
             return new {
@@ -179,21 +180,20 @@ public static class AnalyticsEndpoints {
         int days = 14,
         CancellationToken cancellationToken = default) {
         var sql = $@"
-        SELECT
-            check_date,
-            COUNT(*) AS total_checks,
-            SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) AS passed,
-            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
-            SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings
-        FROM grantpud.observability.dq_check_results
-        WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(days)} DAYS
-        GROUP BY check_date
-        ORDER BY check_date
-    ";
+            SELECT
+                check_date,
+                COUNT(*) AS total_checks,
+                SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) AS passed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings
+            FROM grantpud.observability.dq_check_results
+            WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(days)} DAYS
+            GROUP BY check_date
+            ORDER BY check_date
+        ";
 
         var result = await client.ExecuteAsync(sql, cancellationToken);
-        var data = result.Rows.Select(r =>
-        {
+        var data = result.Rows.Select(r => {
             var total = ParseInt(r[1]) ?? 0;
             var passed = ParseInt(r[2]) ?? 0;
             return new {
@@ -282,6 +282,93 @@ public static class AnalyticsEndpoints {
             avgDemand = ParseDouble(r[1]),
             avgPeak = ParseDouble(r[2]),
             dayCount = ParseInt(r[3]),
+        });
+
+        return Results.Ok(data);
+    }
+
+    private static async Task<IResult> GetDemandByDayOfWeekAsync(
+    IDatabricksSqlClient client,
+    ILogger<AnalyticsEndpointsLog> logger,
+    CancellationToken cancellationToken) {
+        const string sql = @"
+            SELECT
+                d.day_of_week,
+                d.day_name,
+                ROUND(AVG(f.demand_total_mwh), 1) AS avg_demand,
+                ROUND(AVG(f.demand_peak_mwh), 1) AS avg_peak,
+                COUNT(*) AS day_count
+            FROM grantpud.gold.fact_daily_load_weather f
+            JOIN grantpud.gold.dim_date d ON f.date_key = d.date_key
+            GROUP BY d.day_of_week, d.day_name
+            ORDER BY CASE WHEN d.day_of_week = 1 THEN 7 ELSE d.day_of_week - 1 END
+        ";
+
+        var result = await client.ExecuteAsync(sql, cancellationToken);
+        var data = result.Rows.Select(r => new {
+            dayOfWeek = ParseInt(r[0]),
+            dayName = r[1],
+            avgDemand = ParseDouble(r[2]),
+            avgPeak = ParseDouble(r[3]),
+            dayCount = ParseInt(r[4]),
+        });
+
+        return Results.Ok(data);
+    }
+
+    private static async Task<IResult> GetEnergyBalanceAsync(
+        IDatabricksSqlClient client,
+        ILogger<AnalyticsEndpointsLog> logger,
+        CancellationToken cancellationToken) {
+        const string sql = @"
+            SELECT
+                d.full_date,
+                f.demand_total_mwh,
+                f.net_generation_total_mwh,
+                f.interchange_total_mwh
+            FROM grantpud.gold.fact_daily_load_weather f
+            JOIN grantpud.gold.dim_date d ON f.date_key = d.date_key
+            ORDER BY d.full_date
+        ";
+
+        var result = await client.ExecuteAsync(sql, cancellationToken);
+        var data = result.Rows.Select(r => new {
+            date = r[0],
+            demandTotalMwh = ParseDouble(r[1]),
+            netGenerationTotalMwh = ParseDouble(r[2]),
+            interchangeTotalMwh = ParseDouble(r[3]),
+        });
+
+        return Results.Ok(data);
+    }
+
+    private static async Task<IResult> GetLoadDurationAsync(
+        IDatabricksSqlClient client,
+        ILogger<AnalyticsEndpointsLog> logger,
+        CancellationToken cancellationToken) {
+        // Load duration curve: every daily peak demand value sorted descending,
+        // paired with the percent of the period it was at or above that level.
+        // Computed server-side so the frontend just plots x (percent) vs y (MWh).
+        const string sql = @"
+            WITH ranked AS (
+                SELECT
+                    f.demand_peak_mwh AS mw,
+                    ROW_NUMBER() OVER (ORDER BY f.demand_peak_mwh DESC) AS rn,
+                    COUNT(*) OVER () AS total
+                FROM grantpud.gold.fact_daily_load_weather f
+                WHERE f.demand_peak_mwh IS NOT NULL
+            )
+            SELECT
+                ROUND((rn / total) * 100.0, 2) AS pct_of_time,
+                mw
+            FROM ranked
+            ORDER BY rn
+        ";
+
+        var result = await client.ExecuteAsync(sql, cancellationToken);
+        var data = result.Rows.Select(r => new {
+            pctOfTime = ParseDouble(r[0]),
+            mw = ParseDouble(r[1]),
         });
 
         return Results.Ok(data);

@@ -42,3 +42,4 @@ local.settings.json
 .DS_Store
 Thumbs.db
 Desktop.ini
+/scripts

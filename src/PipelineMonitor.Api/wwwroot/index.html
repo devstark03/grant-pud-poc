@@ -20,10 +20,10 @@
             --gold: #c89b3c;
             --row-bronze-tint: rgba(164, 113, 72, 0.04);
             --row-silver-tint: rgba(45, 148, 249, 0.04);
-            --row-gold-tint: rgba(200, 155, 60, 0.06);
+            --row-gold-tint: rgba(200, 155, 60, 0.1);
             --row-bronze-tint-hover: rgba(164, 113, 72, 0.08);
             --row-silver-tint-hover: rgba(45, 148, 249, 0.08);
-            --row-gold-tint-hover: rgba(200, 155, 60, 0.1);
+            --row-gold-tint-hover: rgba(200, 156, 60, 0.185);
             --danger-red: #cf222e;
             --ink: #0d1f3a;
             --ink-secondary: #4a5a73;
@@ -335,7 +335,7 @@
                 top: 0;
                 left: 0;
                 right: 0;
-                height: 2px;
+                height: 6px;
                 background: transparent;
             }
 
@@ -707,7 +707,6 @@
                 overflow: visible;
             }
 
-            /* Sidebar becomes slide-in drawer */
             aside {
                 position: fixed;
                 top: 0;
@@ -818,7 +817,7 @@
                 height: 240px;
             }
 
-            /* Tables → horizontal card carousel */
+            /* Tables -> horizontal card carousel */
             .table-card {
                 border-radius: 0;
                 border: none;
@@ -1155,9 +1154,19 @@
                             <div class="chart-container"><canvas id="chart-demand-vs-temp"></canvas></div>
                         </div>
                         <div class="chart-card">
-                            <h3>Weekend vs weekday</h3>
-                            <div class="chart-subtitle">Average daily and peak demand by day type</div>
-                            <div class="chart-container"><canvas id="chart-weekend-vs-weekday"></canvas></div>
+                            <h3>Demand by day of week</h3>
+                            <div class="chart-subtitle">Average total and peak demand, Monday through Sunday</div>
+                            <div class="chart-container"><canvas id="chart-demand-by-dow"></canvas></div>
+                        </div>
+                        <div class="chart-card full">
+                            <h3>Grid energy balance</h3>
+                            <div class="chart-subtitle">Demand, net generation, and interchange. Net generation above demand indicates a net-exporting day.</div>
+                            <div class="chart-container"><canvas id="chart-energy-balance"></canvas></div>
+                        </div>
+                        <div class="chart-card full">
+                            <h3>Load duration curve</h3>
+                            <div class="chart-subtitle">Daily peak demand sorted high to low against percent of the period. A flatter curve indicates steadier load; a steep left edge indicates peakier demand.</div>
+                            <div class="chart-container"><canvas id="chart-load-duration"></canvas></div>
                         </div>
                     </div>
                 </section>
@@ -1367,11 +1376,13 @@
 
         async function refreshAnalytics() {
             try {
-                const [summary, demandOverTime, demandVsTemp, weekendData] = await Promise.all([
+                const [summary, demandOverTime, demandVsTemp, demandByDow, energyBalance, loadDuration] = await Promise.all([
                     fetchJson('/api/analytics/summary'),
                     fetchJson('/api/analytics/demand-over-time'),
                     fetchJson('/api/analytics/demand-vs-temperature'),
-                    fetchJson('/api/analytics/weekend-vs-weekday'),
+                    fetchJson('/api/analytics/demand-by-day-of-week'),
+                    fetchJson('/api/analytics/energy-balance'),
+                    fetchJson('/api/analytics/load-duration'),
                 ]);
 
                 document.getElementById('analytics-kpis').innerHTML = `
@@ -1383,7 +1394,9 @@
 
                 renderDemandOverTime(demandOverTime);
                 renderDemandVsTemp(demandVsTemp);
-                renderWeekendVsWeekday(weekendData);
+                renderDemandByDayOfWeek(demandByDow);
+                renderEnergyBalance(energyBalance);
+                renderLoadDurationCurve(loadDuration);
             } catch (err) { console.error('Analytics refresh failed', err); }
         }
 
@@ -1517,19 +1530,82 @@
             });
         }
 
-        function renderWeekendVsWeekday(data) {
-            const ctx = document.getElementById('chart-weekend-vs-weekday').getContext('2d');
-            if (charts.weekendVsWeekday) charts.weekendVsWeekday.destroy();
-            charts.weekendVsWeekday = new Chart(ctx, {
+        function renderDemandByDayOfWeek(data) {
+            const ctx = document.getElementById('chart-demand-by-dow').getContext('2d');
+            if (charts.demandByDow) charts.demandByDow.destroy();
+            const labels = data.map(d => {
+                if (d.dayName) return d.dayName.substring(0, 3);
+                return String(d.dayOfWeek ?? '');
+            });
+            charts.demandByDow = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: data.map(d => d.dayType),
+                    labels,
                     datasets: [
-                        { label: 'Avg daily demand (MWh)', data: data.map(d => d.avgDemand), backgroundColor: palette.dodgerBlue, borderRadius: 6 },
-                        { label: 'Avg peak demand (MWh)', data: data.map(d => d.avgPeak), backgroundColor: palette.jungleGreen, borderRadius: 6 },
+                        { label: 'Avg total demand (MWh)', data: data.map(d => d.avgDemand), backgroundColor: palette.dodgerBlue, borderRadius: 6 },
                     ],
                 },
                 options: chartOptions({}),
+            });
+        }
+
+        function renderEnergyBalance(data) {
+            const ctx = document.getElementById('chart-energy-balance').getContext('2d');
+            if (charts.energyBalance) charts.energyBalance.destroy();
+            charts.energyBalance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [
+                        { label: 'Demand (MWh)', data: data.map(d => d.demandTotalMwh), borderColor: palette.dodgerBlue, backgroundColor: palette.dodgerBlue + '22', tension: 0.2, fill: true, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+                        { label: 'Net generation (MWh)', data: data.map(d => d.netGenerationTotalMwh), borderColor: palette.jungleGreen, backgroundColor: palette.jungleGreen + '22', tension: 0.2, fill: true, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+                        { label: 'Interchange (MWh)', data: data.map(d => d.interchangeTotalMwh), borderColor: palette.amber, backgroundColor: 'transparent', tension: 0.2, fill: false, pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.5, borderDash: [4, 3] },
+                    ],
+                },
+                options: chartOptions({}),
+            });
+        }
+
+        function renderLoadDurationCurve(data) {
+            const ctx = document.getElementById('chart-load-duration').getContext('2d');
+            if (charts.loadDuration) charts.loadDuration.destroy();
+            const points = data.map(d => ({ x: d.pctOfTime, y: d.mw }));
+            charts.loadDuration = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        { label: 'Peak demand (MWh)', data: points, borderColor: palette.turfGreen, backgroundColor: palette.turfGreen + '20', tension: 0, fill: true, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 },
+                    ],
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14, font: { size: 11 } } },
+                        tooltip: {
+                            backgroundColor: palette.prussianBlue, titleColor: palette.brightSnow, bodyColor: palette.brightSnow, padding: 10, cornerRadius: 6,
+                            callbacks: {
+                                title: (items) => items.length ? `${items[0].parsed.x}% of period` : '',
+                                label: (item) => `${formatNumber(item.parsed.y, { maximumFractionDigits: 0 })} MWh`,
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            min: 0, max: 100,
+                            title: { display: true, text: 'Percent of period (%)', color: palette.inkTertiary },
+                            grid: { color: palette.borderSoft, drawBorder: false },
+                            ticks: { font: { size: 10 }, callback: (v) => v + '%' },
+                        },
+                        y: {
+                            title: { display: true, text: 'Peak demand (MWh)', color: palette.inkTertiary },
+                            grid: { color: palette.borderSoft, drawBorder: false },
+                            ticks: { font: { size: 10 } },
+                            beginAtZero: false,
+                        },
+                    },
+                },
             });
         }
 
