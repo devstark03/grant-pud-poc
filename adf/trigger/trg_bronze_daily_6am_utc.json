@@ -22,7 +22,7 @@
 			"recurrence": {
 				"frequency": "Day",
 				"interval": 1,
-				"startTime": "2026-05-26T10:22:00",
+				"startTime": "2026-05-25T00:00:00",
 				"timeZone": "Central Standard Time",
 				"schedule": {
 					"minutes": [
