@@ -1,0 +1,91 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adf-grantpud-poc"
+		},
+		"ls_adls_grantpud_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://grantpudpocstorage.dfs.core.windows.net/"
+		},
+		"ls_kv_grantpud_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://kv-grantpud-poc.vault.azure.net/"
+		},
+		"ls_rest_eia_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://api.eia.gov/v2/"
+		},
+		"ls_rest_noaa_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://www.ncei.noaa.gov/cdo-web/api/v2/"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_runDate": {
+			"type": "string",
+			"defaultValue": "2025-11-01"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_respondent": {
+			"type": "string",
+			"defaultValue": "BPAT"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_stationId": {
+			"type": "string",
+			"defaultValue": "GHCND:USW00024229"
+		},
+		"containerUri": {
+			"type": "string",
+			"metadata": "URI to storage account containing linked ARM templates"
+		},
+		"containerSasToken": {
+			"type": "string",
+			"metadata": "Sas token to storage account containing linked ARM templates"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "adf-grantpud-poc_ArmTemplate_0",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2024-03-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"ls_adls_grantpud_properties_typeProperties_url": {
+						"value": "[parameters('ls_adls_grantpud_properties_typeProperties_url')]"
+					},
+					"ls_kv_grantpud_properties_typeProperties_baseUrl": {
+						"value": "[parameters('ls_kv_grantpud_properties_typeProperties_baseUrl')]"
+					},
+					"ls_rest_eia_properties_typeProperties_url": {
+						"value": "[parameters('ls_rest_eia_properties_typeProperties_url')]"
+					},
+					"ls_rest_noaa_properties_typeProperties_url": {
+						"value": "[parameters('ls_rest_noaa_properties_typeProperties_url')]"
+					},
+					"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_runDate": {
+						"value": "[parameters('trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_runDate')]"
+					},
+					"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_respondent": {
+						"value": "[parameters('trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_respondent')]"
+					},
+					"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_stationId": {
+						"value": "[parameters('trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_stationId')]"
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}

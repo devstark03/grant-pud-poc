@@ -1,0 +1,926 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adf-grantpud-poc"
+		},
+		"ls_adls_grantpud_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://grantpudpocstorage.dfs.core.windows.net/"
+		},
+		"ls_kv_grantpud_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://kv-grantpud-poc.vault.azure.net/"
+		},
+		"ls_rest_eia_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://api.eia.gov/v2/"
+		},
+		"ls_rest_noaa_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://www.ncei.noaa.gov/cdo-web/api/v2/"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_runDate": {
+			"type": "string",
+			"defaultValue": "2025-11-01"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_respondent": {
+			"type": "string",
+			"defaultValue": "BPAT"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_stationId": {
+			"type": "string",
+			"defaultValue": "GHCND:USW00024229"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_bronze_backfill')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "One-time backfill wrapper that loops a date range and invokes pl_bronze_ingest_daily for each date",
+				"activities": [
+					{
+						"name": "Append_Date",
+						"type": "ForEach",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@range(0, pipeline().parameters.daysToGet)",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Append variable1",
+									"type": "AppendVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "dateArray",
+										"value": {
+											"value": "@formatDateTime(addDays(pipeline().parameters.startDate, item()), 'yyyy-MM-dd')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach_Date",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Append_Date",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('dateArray')",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Execute Pipeline1",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "pl_bronze_ingest_daily",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"runDate": {
+												"value": "@item()",
+												"type": "Expression"
+											},
+											"respondent": {
+												"value": "@pipeline().parameters.respondent",
+												"type": "Expression"
+											},
+											"stationId": {
+												"value": "@pipeline().parameters.stationId",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Notify_PipelineSucceeded",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "ForEach_Date",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"url": "https://app-grantpud-poc-monitor-ezfxdeg7atcreygg.canadaeast-01.azurewebsites.net/api/runs/notify",
+							"body": {
+								"value": "@json(concat(\n'{',\n'\"pipelineRunId\":\"', pipeline().RunId, '\",',\n'\"pipelineName\":\"', pipeline().Pipeline, '\",',\n'\"dataFactoryName\":\"', pipeline().DataFactory, '\",',\n'\"status\":\"Succeeded\",',\n'\"startTime\":\"', pipeline().TriggerTime, '\",',\n'\"endTime\":\"', utcnow(), '\",',\n'\"errorMessage\":null,',\n'\"notificationId\":\"', pipeline().RunId, '-succeeded\"',\n'}'\n))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Notify_PipelineFailed",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "ForEach_Date",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Append_Date",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {},
+							"url": "https://app-grantpud-poc-monitor-ezfxdeg7atcreygg.canadaeast-01.azurewebsites.net/api/runs/notify",
+							"body": {
+								"value": "@json(concat(\n'{',\n'\"pipelineRunId\":\"', pipeline().RunId, '\",',\n'\"pipelineName\":\"', pipeline().Pipeline, '\",',\n'\"dataFactoryName\":\"', pipeline().DataFactory, '\",',\n'\"status\":\"Failed\",',\n'\"startTime\":\"', pipeline().TriggerTime, '\",',\n'\"endTime\":\"', utcnow(), '\",',\n'\"errorMessage\":\"Pipeline activity failed. Check ADF Monitor for details.\",',\n'\"notificationId\":\"', pipeline().RunId, '-failed\"',\n'}'\n))",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"startDate": {
+						"type": "string",
+						"defaultValue": "2026-04-01"
+					},
+					"daysToGet": {
+						"type": "int",
+						"defaultValue": 60
+					},
+					"respondent": {
+						"type": "string",
+						"defaultValue": "BPAT"
+					},
+					"stationId": {
+						"type": "string",
+						"defaultValue": "GHCND:USW00024229"
+					}
+				},
+				"variables": {
+					"dateArray": {
+						"type": "Array"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-05-26T16:18:48Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/pl_bronze_ingest_daily')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_bronze_ingest_daily')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Daily ingestion of EIA and NOAA data into bronze layer.",
+				"activities": [
+					{
+						"name": "Get_EIA_ApiKey",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Get_Databricks_PAT",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://kv-grantpud-poc.vault.azure.net/secrets/eia-api-key?api-version=7.4",
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "Get_NOAA_Token",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Get_EIA_ApiKey",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://kv-grantpud-poc.vault.azure.net/secrets/noaa-token?api-version=7.4",
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "Copy_EIA_to_Bronze",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Get_NOAA_Token",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings",
+									"filePattern": "setOfObjects"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_rest_eia_regiondata",
+								"type": "DatasetReference",
+								"parameters": {
+									"apiKey": {
+										"value": "@activity('Get_EIA_ApiKey').output.value",
+										"type": "Expression"
+									},
+									"startDate": {
+										"value": "@concat(pipeline().parameters.runDate, 'T00')",
+										"type": "Expression"
+									},
+									"endDate": {
+										"value": "@concat(pipeline().parameters.runDate, 'T23')",
+										"type": "Expression"
+									},
+									"respondent": {
+										"value": "@pipeline().parameters.respondent",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_adls_bronze_eia",
+								"type": "DatasetReference",
+								"parameters": {
+									"respondent": {
+										"value": "@pipeline().parameters.respondent",
+										"type": "Expression"
+									},
+									"year": {
+										"value": "@substring(pipeline().parameters.runDate, 0, 4)",
+										"type": "Expression"
+									},
+									"month": {
+										"value": "@substring(pipeline().parameters.runDate, 5, 2)",
+										"type": "Expression"
+									},
+									"day": {
+										"value": "@substring(pipeline().parameters.runDate, 8, 2)",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "Copy_NOAA_to_Bronze",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Copy_EIA_to_Bronze",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"additionalHeaders": {
+									"token": {
+										"value": "@activity('Get_NOAA_Token').output.value",
+										"type": "Expression"
+									}
+								},
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_rest_noaa_observations",
+								"type": "DatasetReference",
+								"parameters": {
+									"token": {
+										"value": "@activity('Get_NOAA_Token').output.value",
+										"type": "Expression"
+									},
+									"stationId": {
+										"value": "@pipeline().parameters.stationId",
+										"type": "Expression"
+									},
+									"startDate": {
+										"value": "@pipeline().parameters.runDate",
+										"type": "Expression"
+									},
+									"endDate": {
+										"value": "@pipeline().parameters.runDate",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_adls_bronze_noaa",
+								"type": "DatasetReference",
+								"parameters": {
+									"stationId": {
+										"value": "@pipeline().parameters.stationId",
+										"type": "Expression"
+									},
+									"year": {
+										"value": "@substring(pipeline().parameters.runDate, 0, 4)",
+										"type": "Expression"
+									},
+									"month": {
+										"value": "@substring(pipeline().parameters.runDate, 5, 2)",
+										"type": "Expression"
+									},
+									"day": {
+										"value": "@substring(pipeline().parameters.runDate, 8, 2)",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "Get_Databricks_PAT",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://kv-grantpud-poc.vault.azure.net/secrets/databricks-pat?api-version=7.4",
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "Trigger_Databricks_Job",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Copy_NOAA_to_Bronze",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json",
+								"Authorization": {
+									"value": "@concat('Bearer ', activity('Get_Databricks_PAT').output.value)",
+									"type": "Expression"
+								}
+							},
+							"url": "https://adb-7405607300790677.17.azuredatabricks.net/api/2.1/jobs/run-now",
+							"body": {
+								"job_id": 1116563080006767
+							}
+						}
+					},
+					{
+						"name": "Notify_PipelineSucceeded",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Trigger_Databricks_Job",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"url": "https://app-grantpud-poc-monitor-ezfxdeg7atcreygg.canadaeast-01.azurewebsites.net/api/runs/notify",
+							"body": {
+								"value": "@json(concat(\n'{',\n'\"pipelineRunId\":\"', pipeline().RunId, '\",',\n'\"pipelineName\":\"', pipeline().Pipeline, '\",',\n'\"dataFactoryName\":\"', pipeline().DataFactory, '\",',\n'\"status\":\"Succeeded\",',\n'\"startTime\":\"', pipeline().TriggerTime, '\",',\n'\"endTime\":\"', utcnow(), '\",',\n'\"errorMessage\":null,',\n'\"notificationId\":\"', pipeline().RunId, '-succeeded\"',\n'}'\n))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Notify_PipelineFailed",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Trigger_Databricks_Job",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Get_Databricks_PAT",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Get_EIA_ApiKey",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Get_NOAA_Token",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Copy_EIA_to_Bronze",
+								"dependencyConditions": [
+									"Failed"
+								]
+							},
+							{
+								"activity": "Copy_NOAA_to_Bronze",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {},
+							"url": "https://app-grantpud-poc-monitor-ezfxdeg7atcreygg.canadaeast-01.azurewebsites.net/api/runs/notify",
+							"body": {
+								"value": "@json(concat(\n'{',\n'\"pipelineRunId\":\"', pipeline().RunId, '\",',\n'\"pipelineName\":\"', pipeline().Pipeline, '\",',\n'\"dataFactoryName\":\"', pipeline().DataFactory, '\",',\n'\"status\":\"Failed\",',\n'\"startTime\":\"', pipeline().TriggerTime, '\",',\n'\"endTime\":\"', utcnow(), '\",',\n'\"errorMessage\":\"Pipeline activity failed. Check ADF Monitor for details.\",',\n'\"notificationId\":\"', pipeline().RunId, '-failed\"',\n'}'\n))",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"runDate": {
+						"type": "string",
+						"defaultValue": "2000-01-01"
+					},
+					"respondent": {
+						"type": "string",
+						"defaultValue": "BPAT"
+					},
+					"stationId": {
+						"type": "string",
+						"defaultValue": "GHCND:USW00024229"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-05-26T15:14:11Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_rest_eia_regiondata')]",
+				"[concat(variables('factoryId'), '/datasets/ds_adls_bronze_eia')]",
+				"[concat(variables('factoryId'), '/datasets/ds_rest_noaa_observations')]",
+				"[concat(variables('factoryId'), '/datasets/ds_adls_bronze_noaa')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_adls_bronze_eia')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_grantpud",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"respondent": {
+						"type": "string",
+						"defaultValue": "BPAT"
+					},
+					"year": {
+						"type": "string"
+					},
+					"month": {
+						"type": "string"
+					},
+					"day": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@concat('eia_', dataset().respondent, '_', dataset().year, '-', dataset().month, '-', dataset().day, '.json')",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat('eia/', dataset().respondent, '/year=', dataset().year, '/month=', dataset().month, '/day=', dataset().day)",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_grantpud')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_adls_bronze_noaa')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_grantpud",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"stationId": {
+						"type": "string",
+						"defaultValue": "GHCND:USW00024229"
+					},
+					"year": {
+						"type": "string"
+					},
+					"month": {
+						"type": "string"
+					},
+					"day": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@concat('noaa_', replace(dataset().stationId, ':', '_'), '_', dataset().year, '-', dataset().month, '-', dataset().day, '.json')",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat('noaa/', replace(dataset().stationId, ':', '_'), '/year=', dataset().year, '/month=', dataset().month, '/day=', dataset().day)",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_grantpud')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_rest_eia_regiondata')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Default value of respondent is set to BPAT (Bonneville Power Administration)",
+				"linkedServiceName": {
+					"referenceName": "ls_rest_eia",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"apiKey": {
+						"type": "string"
+					},
+					"startDate": {
+						"type": "string"
+					},
+					"endDate": {
+						"type": "string"
+					},
+					"respondent": {
+						"type": "string",
+						"defaultValue": "BPAT"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "@concat('electricity/rto/region-data/data/?frequency=hourly&data[]=value&facets[respondent][]=', dataset().respondent, '&start=', dataset().startDate, '&end=', dataset().endDate, '&api_key=', dataset().apiKey)",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_rest_eia')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_rest_noaa_observations')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Station ID is set to Portland International Airport, which is the standard weather station for the BPA service area.",
+				"linkedServiceName": {
+					"referenceName": "ls_rest_noaa",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"token": {
+						"type": "string"
+					},
+					"stationId": {
+						"type": "string",
+						"defaultValue": "GHCND:USW00024229"
+					},
+					"startDate": {
+						"type": "string"
+					},
+					"endDate": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "@concat('data?datasetid=GHCND&stationid=', dataset().stationId, '&startdate=', dataset().startDate, '&enddate=', dataset().endDate, '&limit=1000&units=metric')",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_rest_noaa')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_adls_grantpud')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('ls_adls_grantpud_properties_typeProperties_url')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_kv_grantpud')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureKeyVault",
+				"typeProperties": {
+					"baseUrl": "[parameters('ls_kv_grantpud_properties_typeProperties_baseUrl')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_rest_eia')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "EIA Open Data API for electricity grid data",
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('ls_rest_eia_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_rest_noaa')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "NOAA Climate Data Online API for weather observations",
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('ls_rest_noaa_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/trg_bronze_daily_6am_utc')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Daily ingestion trigger, runs at 6am UTC to capture previous day's data",
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "pl_bronze_ingest_daily",
+							"type": "PipelineReference"
+						},
+						"parameters": {
+							"runDate": "[parameters('trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_runDate')]",
+							"respondent": "[parameters('trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_respondent')]",
+							"stationId": "[parameters('trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_stationId')]"
+						}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2026-05-25T00:00:00",
+						"timeZone": "Central Standard Time",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								6
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/pl_bronze_ingest_daily')]"
+			]
+		}
+	]
+}

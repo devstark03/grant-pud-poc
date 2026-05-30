@@ -1,0 +1,30 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adf-grantpud-poc"
+		},
+		"ls_adls_grantpud_properties_typeProperties_url": {
+			"value": "https://grantpudpocstorage.dfs.core.windows.net/"
+		},
+		"ls_kv_grantpud_properties_typeProperties_baseUrl": {
+			"value": "https://kv-grantpud-poc.vault.azure.net/"
+		},
+		"ls_rest_eia_properties_typeProperties_url": {
+			"value": "https://api.eia.gov/v2/"
+		},
+		"ls_rest_noaa_properties_typeProperties_url": {
+			"value": "https://www.ncei.noaa.gov/cdo-web/api/v2/"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_runDate": {
+			"value": "2025-11-01"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_respondent": {
+			"value": "BPAT"
+		},
+		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_stationId": {
+			"value": "GHCND:USW00024229"
+		}
+	}
+}
