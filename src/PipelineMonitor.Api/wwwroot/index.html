@@ -1238,7 +1238,7 @@
                 <section id="tab-operations" class="tab-panel">
                     <div id="alerts-container"></div>
 
-                    <h2 class="section-title">Summary (24 hours)</h2>
+                    <h2 class="section-title">Summary (7 days)</h2>
                     <div class="kpi-grid" id="ops-kpis" style="margin-bottom: 1.5rem;">
                         <div class="kpi-card accent-blue"><div class="kpi-label">Total runs</div><div class="kpi-value"><span class="skeleton"></span></div></div>
                         <div class="kpi-card accent-green"><div class="kpi-label">Succeeded</div><div class="kpi-value"><span class="skeleton"></span></div></div>
@@ -1461,8 +1461,8 @@
         async function refreshOperations() {
             try {
                 const [summary, runs, alerts] = await Promise.all([
-                    fetchJson('/api/runs/summary?hours=24'),
-                    fetchJson('/api/runs?hours=24&limit=50'),
+                    fetchJson('/api/runs/summary?hours=168'),
+                    fetchJson('/api/runs?hours=168&limit=100'),
                     fetchJson('/api/alerts/active'),
                 ]);
 
@@ -1484,7 +1484,7 @@
 
                 const tbody = document.getElementById('runs-tbody');
                 tbody.innerHTML = runs.length === 0
-                    ? '<tr><td colspan="5" class="empty-state">No runs in the last 24 hours.</td></tr>'
+                    ? '<tr><td colspan="5" class="empty-state">No runs in the last 7 days.</td></tr>'
                     : runs.map(r => `
                         <tr>
                           <td data-label="Pipeline">${r.pipelineName}</td>
