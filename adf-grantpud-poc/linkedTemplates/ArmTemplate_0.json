@@ -25,7 +25,7 @@
 		},
 		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_runDate": {
 			"type": "string",
-			"defaultValue": "2025-11-01"
+			"defaultValue": "@formatDateTime(trigger().scheduledTime, 'yyyy-MM-dd')"
 		},
 		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_respondent": {
 			"type": "string",
