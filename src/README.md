@@ -4,8 +4,8 @@ The PipelineMonitor solution is a .NET 8 application that provides operational v
 
 ## Projects
 
-- **PipelineMonitor.Worker** - A Worker Service that subscribes to Azure Event Grid events emitted by ADF pipeline activities. It processes success and failure events, persists run metadata to Azure SQL, and triggers alerts on failures.
 - **PipelineMonitor.Api** - An ASP.NET Core Web API that serves pipeline run status, history, and health data to the operations dashboard.
+- **PipelineMonitor.Core** - The Core library that connects the API with the functionality of this project
 - **PipelineMonitor.Tests** - Unit and integration tests for both the Worker and API projects.
 
 ## Solution
