@@ -18,7 +18,7 @@
 			"value": "https://www.ncei.noaa.gov/cdo-web/api/v2/"
 		},
 		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_runDate": {
-			"value": "@formatDateTime(trigger().scheduledTime, 'yyyy-MM-dd')"
+			"value": "@formatDateTime(adddays(trigger().scheduledTime, -1), 'yyyy-MM-dd')"
 		},
 		"trg_bronze_daily_6am_utc_properties_pl_bronze_ingest_daily_parameters_respondent": {
 			"value": "BPAT"
