@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PipelineMonitor.Core.Data;
+using System.Globalization;
 
 namespace PipelineMonitor.Api.Endpoints;
 
@@ -24,7 +25,8 @@ public static class DashboardEndpoints {
         var safeLimit = Math.Clamp(limit, 1, 500);
 
         var runs = await db.PipelineRuns
-            .Where(r => r.StartTime >= since)
+            .Where(r => r.StartTime >= DateTime.ParseExact("2026-04-01", "yyyy-MM-dd", CultureInfo.InvariantCulture)
+                && r.StartTime <= DateTime.ParseExact("2026-06-23", "yyyy-MM-dd", CultureInfo.InvariantCulture))
             .OrderByDescending(r => r.StartTime)
             .Take(safeLimit)
             .Select(r => new {
@@ -49,7 +51,8 @@ public static class DashboardEndpoints {
         var since = DateTime.UtcNow.AddHours(-Math.Abs(hours));
 
         var runs = await db.PipelineRuns
-            .Where(r => r.StartTime >= since)
+            .Where(r => r.StartTime >= DateTime.ParseExact("2026-04-01", "yyyy-MM-dd", CultureInfo.InvariantCulture)
+                && r.StartTime <= DateTime.ParseExact("2026-06-23", "yyyy-MM-dd", CultureInfo.InvariantCulture))
             .GroupBy(r => r.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);

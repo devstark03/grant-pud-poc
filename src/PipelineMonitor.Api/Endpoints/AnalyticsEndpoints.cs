@@ -55,6 +55,8 @@ public static class AnalyticsEndpoints {
     ILogger<AnalyticsEndpointsLog> logger,
     int hours = 24,
     CancellationToken cancellationToken = default) {
+        var demoEndDay = "2026-06-23 23:59:59";
+        /*
         var sql = $@"
             SELECT
                 COUNT(*) AS total_checks,
@@ -67,7 +69,20 @@ public static class AnalyticsEndpoints {
             FROM grantpud.observability.dq_check_results
             WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(hours)} HOURS
         ";
-
+        */
+        var sql = $@"
+            SELECT 
+                COUNT(*) AS total_checks,
+                SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) AS passed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings,
+                COUNT(DISTINCT table_name) AS tables_checked,
+                SUM(rows_checked) AS total_rows_checked,
+                SUM(rows_failed) AS total_rows_failed
+            FROM grantpud.observability.dq_check_results
+            WHERE check_timestamp >= TIMESTAMP '{demoEndDay}' - INTERVAL '{Math.Abs(hours)}' HOUR
+              AND check_timestamp <= TIMESTAMP '{demoEndDay}'
+        ";
         var result = await client.ExecuteAsync(sql, cancellationToken);
         if (result.Rows.Count == 0) {
             return Results.Ok(new { });
@@ -140,6 +155,7 @@ public static class AnalyticsEndpoints {
         ILogger<AnalyticsEndpointsLog> logger,
         int hours = 168,
         CancellationToken cancellationToken = default) {
+        var demoEndDay = "2026-06-23 23:59:59";
         var sql = $@"
             SELECT
                 layer,
@@ -150,7 +166,8 @@ public static class AnalyticsEndpoints {
                 SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings,
                 MAX(check_timestamp) AS last_check
             FROM grantpud.observability.dq_check_results
-            WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(hours)} HOURS
+            WHERE check_timestamp >= TIMESTAMP '{demoEndDay}' - INTERVAL '{Math.Abs(hours)}' HOUR
+            AND check_timestamp <= TIMESTAMP '{demoEndDay}'
             GROUP BY layer, table_name
             ORDER BY layer, table_name
         ";
@@ -179,6 +196,7 @@ public static class AnalyticsEndpoints {
         ILogger<AnalyticsEndpointsLog> logger,
         int days = 14,
         CancellationToken cancellationToken = default) {
+        var demoEndDay = "2026-06-23 23:59:59";
         var sql = $@"
             SELECT
                 check_date,
@@ -187,7 +205,8 @@ public static class AnalyticsEndpoints {
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
                 SUM(CASE WHEN status = 'warning' THEN 1 ELSE 0 END) AS warnings
             FROM grantpud.observability.dq_check_results
-            WHERE check_timestamp >= current_timestamp() - INTERVAL {Math.Abs(days)} DAYS
+            WHERE check_timestamp >= TIMESTAMP '{demoEndDay}' - INTERVAL '{Math.Abs(days)}' DAYS
+            AND check_timestamp <= TIMESTAMP '{demoEndDay}'
             GROUP BY check_date
             ORDER BY check_date
         ";
