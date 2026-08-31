@@ -11,7 +11,7 @@
 					"type": "PipelineReference"
 				},
 				"parameters": {
-					"runDate": "2025-11-01",
+					"runDate": "@formatDateTime(adddays(trigger().scheduledTime, -1), 'yyyy-MM-dd')",
 					"respondent": "BPAT",
 					"stationId": "GHCND:USW00024229"
 				}
